@@ -1,0 +1,2 @@
+Check whether we can easily implement a Pissa-like approach where we just use LoRA but initialize the A and B matrix with the
+rows of the U matrix and columns of the V matrix of the top r singular values.  
