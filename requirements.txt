@@ -3,7 +3,6 @@ torch
 safetensors
 bitsandbytes
 scipy
-peft
 transformers
 tqdm
 packaging
