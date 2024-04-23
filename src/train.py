@@ -61,6 +61,7 @@ def main():
     args, hf_args = HfArgumentParser(
         (ModelArguments, TrainingArguments)
     ).parse_args_into_dataclasses()
+    print(hf_args, args)
 
     task = args.task
 
@@ -93,6 +94,7 @@ def main():
         metric_for_best_model=metric_name,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
+        num_train_epochs = args.epochs,
         save_strategy="epoch",
     )
 
