@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+
+#SBATCH --job-name=NLP-SST2
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=00:59:00
+#SBATCH --mem=60000M
+#SBATCH --output=/home/mkrastev/FoMo-LoRA/%A.out
+
+date
+
+WORK_DIR=$HOME/FoMo-LoRA
+cd $WORK_DIR
+
+module load 2023
+module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
+source $WORK_DIR/.venv/bin/activate
+
+TOKENIZERS_PARALLELISM=false python -m src.train --output_dir output
