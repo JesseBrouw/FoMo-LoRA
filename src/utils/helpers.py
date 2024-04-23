@@ -1,4 +1,3 @@
-
 import numpy as np
 
 
@@ -27,6 +26,7 @@ def preprocess_function_builder(task, tokenizer):
         )
 
     return preprocess_function
+
 
 def compute_metrics(eval_pred, task, metric):
     predictions, labels = eval_pred

@@ -1,22 +1,21 @@
-# %% [markdown]
-# # OwOLoRA
-#
-# ## Problem
-#
-# LoRA finetuning has emerged as a popular technique for training large language models. Instead of training a model from scratch, we can take a pre-trained model and fine-tune it on a smaller dataset.
-
 import dataclasses
 import functools
 
 import torch
 from datasets import load_dataset, load_metric
-from peft import LoraConfig, TaskType, get_peft_config, get_peft_model
-from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer, Trainer, TrainingArguments
+from peft import LoraConfig, VeraConfig, TaskType, get_peft_model
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    Trainer,
+    TrainingArguments,
+)
 from .utils.helpers import compute_metrics, preprocess_function_builder
 from .utils.classes import ModelArguments
 from transformers import HfArgumentParser
 
-GLUE_TASKS = (    "cola",
+GLUE_TASKS = (
+    "cola",
     "mnli",
     "mnli-mm",
     "mrpc",
@@ -25,7 +24,9 @@ GLUE_TASKS = (    "cola",
     "rte",
     "sst2",
     "stsb",
-    "wnli")
+    "wnli",
+)
+
 
 def get_model(model_name, num_labels):
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
@@ -34,6 +35,19 @@ def get_model(model_name, num_labels):
     )
     return model, tokenizer
 
+def get_config(lora, r, alpha, dropout):
+    peft_config = LoraConfig(
+        task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
+        inference_mode=False,
+        r=r,
+        lora_alpha=alpha,
+        lora_dropout=dropout,
+    ) if lora == "lora" else VeraConfig(
+        task_type=TaskType.SEQ_CLS,
+        r=r,
+        vera_dropout=dropout,
+    )
+    return peft_config
 
 def load_dataset_metrics(task):
     # Load dataset and metric for the given task
@@ -44,8 +58,10 @@ def load_dataset_metrics(task):
 
 
 def main():
-    args, hf_args = HfArgumentParser((ModelArguments, TrainingArguments)).parse_args_into_dataclasses()
-    
+    args, hf_args = HfArgumentParser(
+        (ModelArguments, TrainingArguments)
+    ).parse_args_into_dataclasses()
+
     task = args.task
 
     # Load dataset and metric for the given task
@@ -54,14 +70,7 @@ def main():
     num_labels = 3 if task.startswith("mnli") else 1 if task == "stsb" else 2
     model, tokenizer = get_model(args.model_name, num_labels)
 
-    peft_config = LoraConfig(
-        task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
-        inference_mode=False,
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout,
-    )
-
+    peft_config = get_config(args.lora, args.lora_r, args.lora_alpha, args.lora_dropout)
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
@@ -76,9 +85,17 @@ def main():
         else "accuracy"
     )
     model_name = args.model_name.split("/")[-1]
-    
-    hf_args = dataclasses.replace(hf_args, output_dir=f"{hf_args.output_dir}/{model_name}-{args.lora}-finetuned-{task}", evaluation_strategy="epoch", metric_for_best_model=metric_name, per_device_train_batch_size=args.batch_size, per_device_eval_batch_size=args.batch_size, save_strategy="epoch")
-    
+
+    hf_args = dataclasses.replace(
+        hf_args,
+        output_dir=f"{hf_args.output_dir}/{model_name}-{args.lora}-finetuned-{task}",
+        evaluation_strategy="epoch",
+        metric_for_best_model=metric_name,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size,
+        save_strategy="epoch",
+    )
+
     # args = TrainingArguments(
     #     f"{args.output_dir}/{model_name}-{args.lora}-finetuned-{task}",
     #     evaluation_strategy="epoch",
@@ -100,7 +117,7 @@ def main():
         if task == "mnli"
         else "validation"
     )
-    
+
     trainer = Trainer(
         model,
         hf_args,
@@ -111,7 +128,8 @@ def main():
     )
 
     trainer.train()
-    trainer.save_model(f"{args.output_dir}/{model_name}-finetuned-{task}")
+    trainer.save_model(hf_args.output_dir)
+
 
 if __name__ == "__main__":
     main()
