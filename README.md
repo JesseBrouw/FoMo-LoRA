@@ -9,7 +9,7 @@ To install the requirements for FoMo-LoRA, run the following commands:
 ```bash
 git clone https://github.com/JesseBrouw/FoMo-LoRA.git
 cd FoMo-LoRA
-pip install -r requirements.txt
+scripts/setup.sh
 ```
 
 ## Usage
