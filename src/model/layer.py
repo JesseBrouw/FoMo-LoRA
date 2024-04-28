@@ -25,9 +25,10 @@ class DynaLoraLayer():
         self.cum_acts = torch.nn.Parameter(
             torch.tensor(0.0), requires_grad=False)
 
-    def get_cum_acts(self):
+    @property
+    def cum_acts(self):
         return self.cum_acts
-    
+
 class Linear(LoraLinear, DynaLoraLayer):
     """
         Overrides lora.Linear with the cumulative activations tracking.
@@ -78,7 +79,7 @@ class Linear(LoraLinear, DynaLoraLayer):
         return result
 
 
-def dispatch_default(
+def dispatch_dynamic(
     target: torch.nn.Module,
     adapter_name: str,
     lora_config: LoraConfig,
