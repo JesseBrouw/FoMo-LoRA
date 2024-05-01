@@ -1,7 +1,10 @@
 from peft import LoraModel
-from .layer import DynaLoraLayer, Linear as DynaLoraLinear, dispatch_dynamic
 from peft.config import PeftConfig
 from typing import Union, List, Tuple, Dict
+from transformers import PreTrainedModel
+
+from .layer import DynaLoraLayer, Linear as DynaLoraLinear, dispatch_dynamic
+from .config import DynaLoraConfig
 
 # TODO: this should just be a mixin
 # Question: in which order does python look for method definitions?
@@ -59,11 +62,47 @@ class DynaLoraMixin:
                 "This method is only supported for LoraModel instances, for now."
             )
 
-        
+        if not hasattr(self, "adapter_modules"):
+            self.adapter_modules = self._find_adapter_modules()
 
-        # TODO: use the *configured* choice function to obtain the k modules we want to activate
-        
-        # TODO: where are the adapters kept in the LoRA model?
-        # TODO: activate the k modules, deactivate the rest. this is easiest via linear search and
+        # use the *configured* choice function to obtain the k modules we want to activate
+        mask = self.allocator([mod.cum_acts for mod in self.adapter_modules])
+
+        # TODO: activate the k modules, deactivate the rest.
+        #       this is easiest via linear search and
         #       O(1) lookup
-        
+        for mod, msk in zip(self.adapter_modules, mask):
+            if msk:
+                mod.activate()
+            else:
+                mod.deactivate()
+
+    def _find_adapter_modules(self):
+        """
+        Find all adapter modules in the model
+        """
+        adapter_modules = []
+        for _, module in self.model.named_modules():
+            if isinstance(module, DynaLoraLayer):
+                adapter_modules.append(module)
+        return adapter_modules
+
+class DynaLoraModel(LoraModel, DynaLoraMixin):
+    def __init__(self,
+                 model: PreTrainedModel,
+                 lora_config: PeftConfig,
+                 dynalora_config: DynaLoraConfig,
+                 adapter_name: str) -> None:
+
+        LoraModel.__init__(self, model, lora_config, adapter_name)
+        DynaLoraMixin.__init__(self, model, dynalora_config, adapter_name)
+
+    def forward(self, *args, **kwargs):
+        # first, see if reallocation is due
+        DynaLoraMixin.forward(self, *args, **kwargs)
+        # then, perform the forward pass
+        LoraModel.forward(self, *args, **kwargs)
+
+    @staticmethod
+    def _create_new_module(lora_config, adapter_name, target, **kwargs):
+        return DynaLoraMixin._create_new_module(lora_config, adapter_name, target, **kwargs)

@@ -2,7 +2,8 @@ import torch
 import warnings
 from typing import Optional
 from peft import LoraConfig
-from peft import LoraLayer, PeftConfig, BaseTunerLayer
+from peft import PeftConfig
+from peft.tuners.tuners_utils import BaseTunerLayer
 from peft.tuners.lora.layer import (LoraLayer,
                                     Linear as LoraLinear,
                                     Conv2d as LoraConv2d,
@@ -12,13 +13,12 @@ from peft.tuners.lora.layer import (LoraLayer,
 class DynaLoraLayer():
     """
         Dynamic LoRA layer. 
-        
+
         Does almost the same as LoraLayer, but keeps track of the cumulative forward activations
         of the layer. This can be used to dynamically reallocate the adapters.
     """
-    def __init__(self, aggregate_type: str = 'l2', **kwargs):
-        if aggregate_type == 'l2':
-            self.aggregator = lambda x: torch.norm(x, p=2)
+    def __init__(self, peft_config, **kwargs):
+        self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
 
     def reset_cum_acts(self):
@@ -109,7 +109,7 @@ def dispatch_dynamic(
             )
             kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = False
         kwargs.update(lora_config.loftq_config)
-        new_module = Linear(target, adapter_name, **kwargs)
+        new_module = Linear(target, adapter_name, peft_config=lora_config, **kwargs)
     # elif isinstance(target_base_layer, Conv1D):
     #     if not kwargs["fan_in_fan_out"]:
     #         warnings.warn(
