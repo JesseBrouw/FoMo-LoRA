@@ -10,32 +10,55 @@ from peft.tuners.lora.layer import (LoraLayer,
                                     Embedding as LoraEmbedding)
 
 
-class DynaLoraLayer():
+class DynaLoraLayer(LoraLayer):
     """
         Dynamic LoRA layer. 
 
         Does almost the same as LoraLayer, but keeps track of the cumulative forward activations
         of the layer. This can be used to dynamically reallocate the adapters.
     """
-    def __init__(self, peft_config, **kwargs):
+    def __init__(self, *args, **kwargs):
+        # loraLayer is typically initialized through another inheritance path
+        # super().__init__(*args, **kwargs)
+
+        peft_config = kwargs.get("peft_config", None)
+        if peft_config is None:
+            raise ValueError("peft_config is required.")
+
+
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
 
     def reset_cum_acts(self):
-        self.cum_acts = torch.nn.Parameter(
-            torch.tensor(0.0), requires_grad=False)
+        self._cum_acts = torch.tensor(0.0, requires_grad=False)
+
+    def activate(self):
+        """
+            Enable gradients for the layer.
+        """
+        for name, param in self.named_parameters():
+            if name.split('.')[0] in LoraLayer.adapter_layer_names:
+                param.requires_grad = True
+
+    def deactivate(self):
+        """
+            Disable gradients for the layer.
+        """
+        for name, param in self.named_parameters():
+            if name.split('.')[0] in LoraLayer.adapter_layer_names:
+                param.requires_grad = False
 
     @property
     def cum_acts(self):
-        return self.cum_acts
+        return self._cum_acts
 
 class Linear(LoraLinear, DynaLoraLayer):
     """
         Overrides lora.Linear with the cumulative activations tracking.
     """
-    def __init__(self, **kwargs):
-        LoraLinear.__init__(self, **kwargs)
-        DynaLoraLayer.__init__(self, **kwargs)
+    def __init__(self, *args, **kwargs):
+        LoraLinear.__init__(self, *args, **kwargs)
+        DynaLoraLayer.__init__(self, *args, **kwargs)
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
         # copy-paste from LoraLinear
@@ -66,7 +89,7 @@ class Linear(LoraLinear, DynaLoraLayer):
                 if not self.use_dora[active_adapter]:
                     # NOTE: this is the only place we do something different
                     ab_path = lora_B(lora_A(dropout(x))) * scaling
-                    self.cum_acts = self.cum_acts + self.aggregator(ab_path.detach())
+                    self._cum_acts = self._cum_acts + self.aggregator(ab_path.detach())
                     result = result + ab_path
                 else:
                     x = dropout(x)
@@ -86,7 +109,6 @@ def dispatch_dynamic(
     **kwargs,
 ) -> Optional[torch.nn.Module]:
     new_module = None
-
     if isinstance(target, BaseTunerLayer):
         target_base_layer = target.get_base_layer()
     else:

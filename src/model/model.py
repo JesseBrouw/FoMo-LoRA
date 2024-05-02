@@ -16,14 +16,20 @@ class DynaLoraMixin:
         
         it overrides the _create_new_module function of BasePeftModel
     """
-    def __init__(self, adapter_type: str, peft_config: Union[Dict[str,PeftConfig], PeftConfig]) -> None:
-        self.adapter_type = adapter_type
+    def __init__(self, adapter_name: str, peft_config: Union[Dict[str,PeftConfig], PeftConfig]) -> None:
+        self.adapter_name = adapter_name
         if isinstance(peft_config, PeftConfig):
             self.peft_config = peft_config
         else:
-            self.peft_config = peft_config[adapter_type]
+            self.peft_config = peft_config[adapter_name]
+        if not hasattr(self.peft_config, 'allocator') or not hasattr(self.peft_config, 'schedule'):
+            raise ValueError(
+                "The PeftConfig object must have a schedule and an allocator attribute."
+            )
         self.schedule = self.peft_config.schedule
-        self.allocator = self.config.allocator
+        self.allocator = self.peft_config.allocator
+        # initialize the active modules
+        self._init_modules()
 
     @staticmethod
     def _create_new_module(lora_config, adapter_name, target, **kwargs):
@@ -53,6 +59,21 @@ class DynaLoraMixin:
             self.reassign_active_modules()
         self.config.schedule.step()
 
+    def _init_modules(self):
+        """
+            Randomly select modules to activate
+        """
+
+        if not hasattr(self, "adapter_modules"):
+            self.adapter_modules = self._find_adapter_modules()
+        # use the *configured* choice function to obtain the k modules we want to activate
+        mask = self.allocator([1 for mod in self.adapter_modules])
+        for mod, msk in zip(self.adapter_modules, mask):
+            if msk:
+                mod.activate()
+            else:
+                mod.deactivate()
+
     def reassign_active_modules(self):
         """
         Reassigns the active modules to the model
@@ -68,9 +89,9 @@ class DynaLoraMixin:
         # use the *configured* choice function to obtain the k modules we want to activate
         mask = self.allocator([mod.cum_acts for mod in self.adapter_modules])
 
-        # TODO: activate the k modules, deactivate the rest.
-        #       this is easiest via linear search and
-        #       O(1) lookup
+        # activate the k modules, deactivate the rest.
+        #   this is easiest via linear search and
+        #   O(1) lookup
         for mod, msk in zip(self.adapter_modules, mask):
             if msk:
                 mod.activate()
@@ -90,12 +111,10 @@ class DynaLoraMixin:
 class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
                  model: PreTrainedModel,
-                 lora_config: PeftConfig,
-                 dynalora_config: DynaLoraConfig,
+                 peft_config: PeftConfig,
                  adapter_name: str) -> None:
-
-        LoraModel.__init__(self, model, lora_config, adapter_name)
-        DynaLoraMixin.__init__(self, model, dynalora_config, adapter_name)
+        LoraModel.__init__(self, model, peft_config, adapter_name)
+        DynaLoraMixin.__init__(self, adapter_name, peft_config)
 
     def forward(self, *args, **kwargs):
         # first, see if reallocation is due

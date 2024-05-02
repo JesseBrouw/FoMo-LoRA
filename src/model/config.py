@@ -1,4 +1,4 @@
-from peft.config import PeftConfig
+from peft import LoraConfig
 from dataclasses import dataclass, field
 from .schedule import BaseSchedule, OnceSchedule, PeriodicSchedule
 from .allocator import BaseAllocator, TopKAllocator, ThresholdAllocator, MultinomialAllocator
@@ -7,7 +7,7 @@ import torch
 from typing import Literal, Optional, Union
 
 @dataclass
-class DynaLoraConfig(PeftConfig):
+class DynaLoraConfig(LoraConfig):
     """
         Configuration for the dynamic LoRA model.
 
@@ -32,6 +32,12 @@ class DynaLoraConfig(PeftConfig):
     aggregate_type: Literal['l2', 'l1'] = field(default='l2')
 
     def __post_init__(self):
+        super().__post_init__()
+        if any(map(lambda x: x is None,
+                   [self.schedule_type, self.allocator_type, self.aggregate_type])):
+            warnings.warn('DynaLoraConfig called but missing required arguments.' \
+                  'Initializing as a LoraConfig.')
+            return
         self.schedule = self.__parse_schedule__(self.schedule_type)
         self.allocator = self.__parse_allocator__(self.allocator_type)
         self.aggregator = self.__parse_aggregator__(self.aggregate_type)

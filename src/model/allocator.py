@@ -28,6 +28,7 @@ class TopKAllocator(BaseAllocator):
         super().__init__(k)
 
     def __call__(self, values: List[float]) -> torch.Tensor:
+        values = torch.tensor(values)
         _, idx = torch.topk(values, self.k)
         mask = torch.zeros_like(values)
         mask[idx] = 1
