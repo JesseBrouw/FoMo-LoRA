@@ -4,14 +4,18 @@ import functools
 import torch
 from datasets import load_dataset, load_metric
 from peft import LoraConfig, VeraConfig, TaskType, get_peft_model
+from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     Trainer,
     TrainingArguments,
 )
+from .model.config import DynaLoraConfig
+from .model.model import DynaLoraModel
 from .utils.helpers import compute_metrics, preprocess_function_builder
 from .utils.classes import ModelArguments
+from .utils.wrapper import PeftModelWrapper
 from transformers import HfArgumentParser
 
 GLUE_TASKS = (
@@ -35,17 +39,21 @@ def get_model(model_name, num_labels):
     )
     return model, tokenizer
 
-def get_config(lora, r, alpha, dropout):
-    peft_config = LoraConfig(
+def get_config(lora, r, alpha, dropout, schedule_type=None, allocator_type=None, aggregate_type=None):
+    peft_config = DynaLoraConfig(
         task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
         inference_mode=False,
         r=r,
         lora_alpha=alpha,
         lora_dropout=dropout,
+        schedule_type=schedule_type,
+        allocator_type=allocator_type,
+        aggregate_type=aggregate_type
     ) if lora == "lora" else VeraConfig(
         task_type=TaskType.SEQ_CLS,
         r=r,
         vera_dropout=dropout,
+        # TODO: support for VeRA
     )
     return peft_config
 
@@ -71,8 +79,22 @@ def main():
     num_labels = 3 if task.startswith("mnli") else 1 if task == "stsb" else 2
     model, tokenizer = get_model(args.model_name, num_labels)
 
-    peft_config = get_config(args.lora, args.lora_r, args.lora_alpha, args.lora_dropout)
-    model = get_peft_model(model, peft_config)
+    if args.dynalora:
+        lora_config = get_config(
+            args.lora,
+            args.lora_r,
+            args.lora_alpha,
+            args.lora_dropout,
+            schedule_type=args.schedule_type,
+            allocator_type=args.allocator_type,
+            aggregate_type=args.aggregate_type,
+        )
+        model = PeftModelWrapper(peft_model=DynaLoraModel(model, lora_config, 'dynalora'),
+                                 peft_config=lora_config, 
+                                 adapter_name='dynalora')
+    else:
+        peft_config = get_config(args.lora, args.lora_r, args.lora_alpha, args.lora_dropout)
+        model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
     preprocess_function = preprocess_function_builder(task, tokenizer)
