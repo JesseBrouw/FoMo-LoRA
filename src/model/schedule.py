@@ -14,8 +14,8 @@ class BaseSchedule(ABC):
 
     def step(self):
         """Increment the step counter."""
-        n += 1
-
+        self.n += 1
+    
     def _reallocate(self) -> bool:
         """
             Boolean valued function to determine if the adapters should be reallocated.
