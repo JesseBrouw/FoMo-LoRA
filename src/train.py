@@ -1,5 +1,6 @@
 import dataclasses
 import functools
+import time
 
 import torch
 from datasets import load_dataset, load_metric
@@ -9,6 +10,7 @@ from transformers import (
     AutoTokenizer,
     Trainer,
     TrainingArguments,
+    TrainerCallback,
 )
 from .utils.helpers import compute_metrics, preprocess_function_builder
 from .utils.classes import ModelArguments
@@ -35,19 +37,25 @@ def get_model(model_name, num_labels):
     )
     return model, tokenizer
 
+
 def get_config(lora, r, alpha, dropout):
-    peft_config = LoraConfig(
-        task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
-        inference_mode=False,
-        r=r,
-        lora_alpha=alpha,
-        lora_dropout=dropout,
-    ) if lora == "lora" else VeraConfig(
-        task_type=TaskType.SEQ_CLS,
-        r=r,
-        vera_dropout=dropout,
+    peft_config = (
+        LoraConfig(
+            task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
+            inference_mode=False,
+            r=r,
+            lora_alpha=alpha,
+            lora_dropout=dropout,
+        )
+        if lora == "lora"
+        else VeraConfig(
+            task_type=TaskType.SEQ_CLS,
+            r=r,
+            vera_dropout=dropout,
+        )
     )
     return peft_config
+
 
 def load_dataset_metrics(task):
     # Load dataset and metric for the given task
@@ -94,7 +102,7 @@ def main():
         metric_for_best_model=metric_name,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
-        num_train_epochs = args.epochs,
+        num_train_epochs=args.epochs,
         save_strategy="epoch",
     )
 
@@ -129,8 +137,32 @@ def main():
         compute_metrics=functools.partial(compute_metrics, task=task, metric=metric),
     )
 
-    trainer.train()
+    tick = time.perf_counter()
+
+    class ProfCallback(TrainerCallback):
+        def __init__(self, prof):
+            self.prof = prof
+
+        def on_step_end(self, args, state, control, **kwargs):
+            self.prof.step()
+
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ],
+        schedule=torch.profiler.schedule(
+            skip_first=3, wait=1, warmup=1, active=2, repeat=2
+        ),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler("hf-training-trainer"),
+        profile_memory=True,
+        with_stack=True,
+        record_shapes=True,
+    ) as prof:
+        trainer.add_callback(ProfCallback(prof=prof))
+        trainer.train()
     trainer.save_model(hf_args.output_dir)
+    print(f"Training took {time.perf_counter() - tick:.2f}s")
 
 
 if __name__ == "__main__":
