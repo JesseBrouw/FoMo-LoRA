@@ -1,6 +1,6 @@
 from peft import LoraModel
 from peft.config import PeftConfig
-from typing import Union, List, Tuple, Dict
+from typing import Any, Union, List, Tuple, Dict
 from transformers import PreTrainedModel
 
 from .layer import DynaLoraLayer, Linear as DynaLoraLinear, dispatch_dynamic
@@ -53,11 +53,11 @@ class DynaLoraMixin:
 
         return new_module
 
-    def forward(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         # Realloc if needed, then step the scheduler.
         if self.schedule.reallocate:
             self.reassign_active_modules()
-        self.config.schedule.step()
+        self.schedule.step()
 
     def _init_modules(self):
         """
@@ -116,11 +116,11 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
         LoraModel.__init__(self, model, peft_config, adapter_name)
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 
-    def forward(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         # first, see if reallocation is due
-        DynaLoraMixin.forward(self, *args, **kwargs)
+        DynaLoraMixin.__call__(self, *args, **kwargs)
         # then, perform the forward pass
-        LoraModel.forward(self, *args, **kwargs)
+        return super().__call__(*args, **kwargs)
 
     @staticmethod
     def _create_new_module(lora_config, adapter_name, target, **kwargs):
