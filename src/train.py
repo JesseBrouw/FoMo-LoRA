@@ -15,7 +15,9 @@ from transformers import (
 )
 from .model.config import DynaLoraConfig
 from .model.model import DynaLoraModel
-from .utils.helpers import compute_metrics, preprocess_function_builder
+from .utils.helpers import (compute_metrics,
+                            preprocess_function_builder,
+                            remove_unused_columns)
 from .utils.classes import ModelArguments
 from .utils.wrapper import PeftModelWrapper
 from transformers import HfArgumentParser
@@ -72,6 +74,8 @@ def main():
     args, hf_args = HfArgumentParser(
         (ModelArguments, TrainingArguments)
     ).parse_args_into_dataclasses()
+    # we'll do this manually, based on the target model's forward signature
+    hf_args.remove_unused_columns = False
     print(hf_args, args)
 
     task = args.task
@@ -81,6 +85,14 @@ def main():
 
     num_labels = 3 if task.startswith("mnli") else 1 if task == "stsb" else 2
     model, tokenizer = get_model(args.model_name, num_labels)
+
+    preprocess_function = preprocess_function_builder(task, tokenizer)
+    encoded_dataset = dataset.map(preprocess_function, batched=True)
+    if "train" in encoded_dataset.column_names:
+        for key in encoded_dataset.column_names:
+            encoded_dataset[key] = remove_unused_columns(encoded_dataset[key],
+                                                         model,
+                                                         hf_args.label_names or [])
 
     if args.dynalora:
         lora_config = get_config(
@@ -100,9 +112,6 @@ def main():
         model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
-    preprocess_function = preprocess_function_builder(task, tokenizer)
-    encoded_dataset = dataset.map(preprocess_function, batched=True)
-
     metric_name = (
         "pearson"
         if task == "stsb"
@@ -120,7 +129,7 @@ def main():
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
         num_train_epochs=args.epochs,
-        save_strategy="epoch",
+        save_strategy="epoch"
     )
 
     # args = TrainingArguments(
@@ -148,8 +157,8 @@ def main():
     trainer = Trainer(
         model,
         hf_args,
-        train_dataset=encoded_dataset["train"],
-        eval_dataset=encoded_dataset[validation_key],
+        train_dataset=encoded_dataset["train"].rename_column("label", "labels"),
+        eval_dataset=encoded_dataset[validation_key].rename_column("label", "labels"),
         tokenizer=tokenizer,  # Pass tokenizer again so that it pads correctly
         compute_metrics=functools.partial(compute_metrics, task=task, metric=metric),
     )

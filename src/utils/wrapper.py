@@ -26,3 +26,7 @@ class PeftModelWrapper(PeftModel, Module):
         self.peft_config = {adapter_name: peft_config}
         # for compatibility.
         self.set_additional_trainable_modules(self.peft_config, self.active_adapter)
+
+    def get_base_model(self) -> Module:
+        # override is needed otherwise this would skip our cool DynaLora stack
+        return self.base_model
