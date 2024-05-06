@@ -33,7 +33,7 @@ class BaseSchedule(ABC):
             Boolean flag to determine if the adapters should be reallocated.
         """
         # always no
-        return self._reallocate
+        return self._reallocate()
 
 class OnceSchedule(BaseSchedule):
     """
