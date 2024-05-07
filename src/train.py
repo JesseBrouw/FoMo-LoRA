@@ -6,6 +6,7 @@ import torch
 from datasets import load_dataset, load_metric
 from peft import LoraConfig, VeraConfig, TaskType, get_peft_model
 from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer
+from transformers.utils.generic import find_labels
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -86,6 +87,10 @@ def main():
     num_labels = 3 if task.startswith("mnli") else 1 if task == "stsb" else 2
     model, tokenizer = get_model(args.model_name, num_labels)
 
+    # find the label names in the model's signature
+    # NOTE: we need this because the DynaLoraModel does not have a meaningful signature
+    hf_args.label_names = find_labels(model.__class__)
+
     preprocess_function = preprocess_function_builder(task, tokenizer)
     encoded_dataset = dataset.map(preprocess_function, batched=True)
     if "train" in encoded_dataset.column_names:
@@ -157,8 +162,8 @@ def main():
     trainer = Trainer(
         model,
         hf_args,
-        train_dataset=encoded_dataset["train"].rename_column("label", "labels"),
-        eval_dataset=encoded_dataset[validation_key].rename_column("label", "labels"),
+        train_dataset=encoded_dataset["train"],
+        eval_dataset=encoded_dataset[validation_key],
         tokenizer=tokenizer,  # Pass tokenizer again so that it pads correctly
         compute_metrics=functools.partial(compute_metrics, task=task, metric=metric),
     )
