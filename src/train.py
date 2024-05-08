@@ -15,10 +15,12 @@ from transformers import (
     TrainerCallback,
 )
 from .model.config import DynaLoraConfig
-from .model.model import DynaLoraModel
-from .utils.helpers import (compute_metrics,
-                            preprocess_function_builder,
-                            remove_unused_columns)
+from .model.model import DinaLoraModel, DynaLoraModel
+from .utils.helpers import (
+    compute_metrics,
+    preprocess_function_builder,
+    remove_unused_columns,
+)
 from .utils.classes import ModelArguments
 from .utils.wrapper import PeftModelWrapper
 from transformers import HfArgumentParser
@@ -44,22 +46,54 @@ def get_model(model_name, num_labels):
     )
     return model, tokenizer
 
-def get_config(lora, r, alpha, dropout, schedule_type=None, allocator_type=None, aggregate_type=None):
-    peft_config = DynaLoraConfig(
-        task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
-        inference_mode=False,
-        r=r,
-        lora_alpha=alpha,
-        lora_dropout=dropout,
-        schedule_type=schedule_type,
-        allocator_type=allocator_type,
-        aggregate_type=aggregate_type
-    ) if lora == "lora" else VeraConfig(
-        task_type=TaskType.SEQ_CLS,
-        r=r,
-        vera_dropout=dropout,
-        # TODO: support for VeRA
-    )
+
+def get_config(
+    lora,
+    r,
+    alpha,
+    dropout,
+    schedule_type=None,
+    allocator_type=None,
+    aggregate_type=None,
+):
+    match lora:
+        case "vera":
+            peft_config = VeraConfig(
+                task_type=TaskType.SEQ_CLS,
+                r=r,
+                vera_dropout=dropout,
+            )
+        case "dynalora":
+            peft_config = DynaLoraConfig(
+                task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
+                inference_mode=False,
+                r=r,
+                lora_alpha=alpha,
+                lora_dropout=dropout,
+                schedule_type=schedule_type,
+                allocator_type=allocator_type,
+                aggregate_type=aggregate_type,
+            )
+        case "dinalora":
+            peft_config = DynaLoraConfig(
+                task_type=TaskType.SEQ_CLS,
+                inference_mode=False,
+                r=r,
+                lora_alpha=alpha,
+                lora_dropout=dropout,
+                schedule_type=schedule_type,
+                allocator_type=allocator_type,
+                aggregate_type=aggregate_type,
+            )
+
+        case _:
+            peft_config = LoraConfig(
+                task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
+                inference_mode=False,
+                r=r,
+                lora_alpha=alpha,
+                lora_dropout=dropout
+            )
     return peft_config
 
 
@@ -95,9 +129,9 @@ def main():
     encoded_dataset = dataset.map(preprocess_function, batched=True)
     if "train" in encoded_dataset.column_names:
         for key in encoded_dataset.column_names:
-            encoded_dataset[key] = remove_unused_columns(encoded_dataset[key],
-                                                         model,
-                                                         hf_args.label_names or [])
+            encoded_dataset[key] = remove_unused_columns(
+                encoded_dataset[key], model, hf_args.label_names or []
+            )
 
     if args.dynalora:
         lora_config = get_config(
@@ -109,11 +143,18 @@ def main():
             allocator_type=args.allocator_type,
             aggregate_type=args.aggregate_type,
         )
-        model = PeftModelWrapper(peft_model=DynaLoraModel(model, lora_config, 'dynalora'),
-                                 peft_config=lora_config, 
-                                 adapter_name='dynalora')
+        # model = PeftModelWrapper(peft_model=DynaLoraModel(model, lora_config, 'dynalora'),
+        #                          peft_config=lora_config,
+        #                          adapter_name='dynalora')
+        model = PeftModelWrapper(
+            peft_model=DinaLoraModel(model, lora_config, "dinalora"),
+            peft_config=lora_config,
+            adapter_name="dinalora",
+        )
     else:
-        peft_config = get_config(args.lora, args.lora_r, args.lora_alpha, args.lora_dropout)
+        peft_config = get_config(
+            args.lora, args.lora_r, args.lora_alpha, args.lora_dropout
+        )
         model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
@@ -134,22 +175,8 @@ def main():
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
         num_train_epochs=args.epochs,
-        save_strategy="epoch"
+        save_strategy="epoch",
     )
-
-    # args = TrainingArguments(
-    #     f"{args.output_dir}/{model_name}-{args.lora}-finetuned-{task}",
-    #     evaluation_strategy="epoch",
-    #     save_strategy="epoch",
-    #     learning_rate=args.learning_rate,
-    #     per_device_train_batch_size=args.batch_size,
-    #     per_device_eval_batch_size=args.batch_size,
-    #     num_train_epochs=args.epochs,
-    #     seed=args.seed,
-    #     weight_decay=0.01,
-    #     load_best_model_at_end=True,
-    #     metric_for_best_model=metric_name,
-    # )
 
     validation_key = (
         "validation_mismatched"
@@ -183,9 +210,9 @@ def main():
             torch.profiler.ProfilerActivity.CUDA,
         ],
         schedule=torch.profiler.schedule(
-            skip_first=3, wait=1, warmup=1, active=2, repeat=2
+            skip_first=3, wait=1, warmup=1, active=4, repeat=6
         ),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler("hf-training-trainer"),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(hf_args.output_dir),
         profile_memory=True,
         with_stack=True,
         record_shapes=True,
