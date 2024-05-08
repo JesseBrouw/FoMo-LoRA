@@ -92,7 +92,7 @@ def get_config(
                 inference_mode=False,
                 r=r,
                 lora_alpha=alpha,
-                lora_dropout=dropout
+                lora_dropout=dropout,
             )
     return peft_config
 
@@ -143,14 +143,18 @@ def main():
             allocator_type=args.allocator_type,
             aggregate_type=args.aggregate_type,
         )
-        # model = PeftModelWrapper(peft_model=DynaLoraModel(model, lora_config, 'dynalora'),
-        #                          peft_config=lora_config,
-        #                          adapter_name='dynalora')
-        model = PeftModelWrapper(
-            peft_model=DinaLoraModel(model, lora_config, "dinalora"),
-            peft_config=lora_config,
-            adapter_name="dinalora",
-        )
+        if args.lora == "dynalora":
+            model = PeftModelWrapper(
+                peft_model=DynaLoraModel(model, lora_config, "dynalora"),
+                peft_config=lora_config,
+                adapter_name="dynalora",
+            )
+        else:
+            model = PeftModelWrapper(
+                peft_model=DinaLoraModel(model, lora_config, "dinalora"),
+                peft_config=lora_config,
+                adapter_name="dinalora",
+            )
     else:
         peft_config = get_config(
             args.lora, args.lora_r, args.lora_alpha, args.lora_dropout
