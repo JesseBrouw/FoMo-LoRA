@@ -10,9 +10,14 @@ from .config import DynaLoraConfig
 # TODO: this should just be a mixin
 # Question: in which order does python look for method definitions?
 # Answer: it looks in the class itself first, then in the parent classes in the order they are defined.
-class DynaLoraMixin:
+
+class AbstractMixin:
+    dispatchers: Tuple[Callable]
+    applicable_modules: Tuple[Any]
+
+class BaseMixin(AbstractMixin):
     """
-        Mixin class to account for injecting DynaLoraLayers 
+        Base Mixin class to account for injecting LoraLayers 
         and keeping track of their cumulative activations. 
 
         It overrides the _create_new_module function of BasePeftModel
@@ -32,11 +37,11 @@ class DynaLoraMixin:
         # initialize the active modules
         self._init_modules()
 
-    @staticmethod
-    def _create_new_module(lora_config, adapter_name, target, **kwargs):
+    @classmethod
+    def _create_new_module(cls, lora_config, adapter_name, target, **kwargs):
         # Collect dispatcher functions to decide what backend to use for the replaced LoRA layer. The order matters,
         # because the first match is always used. Therefore, the default layers should be checked last.
-        dispatchers = [dispatch_dynamic]
+        dispatchers = cls.dispatchers
 
         new_module = None
         for dispatcher in dispatchers:
@@ -105,9 +110,20 @@ class DynaLoraMixin:
         """
         adapter_modules = []
         for _, module in self.model.named_modules():
-            if isinstance(module, DynaLoraLayer):
+            if isinstance(module, self.applicable_modules):
                 adapter_modules.append(module)
         return adapter_modules
+
+# DynaLoRA
+class DynaLoraMixin(BaseMixin):
+    """
+        Mixin class to account for injecting DinaLoraLayers 
+        and keeping track of their cumulative activations., 
+        
+        it overrides the _create_new_module function of BasePeftModel
+    """
+    dispatchers = (dispatch_dynamic,)
+    applicable_modules = (DynaLoraLayer,)
 
 class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
@@ -128,45 +144,17 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
         return DynaLoraMixin._create_new_module(lora_config, adapter_name, target, **kwargs)
 
 
+
 ## DinaLoRA
-class DinaLoraMixin(DynaLoraMixin):
+class DinaLoraMixin(BaseMixin):
     """
         Mixin class to account for injecting DinaLoraLayers 
         and keeping track of their cumulative activations., 
         
         it overrides the _create_new_module function of BasePeftModel
     """
-    def _find_adapter_modules(self):
-        """
-        Find all adapter modules in the model
-        """
-        adapter_modules = []
-        for _, module in self.model.named_modules():
-            if isinstance(module, DinaLoraLayer):
-                adapter_modules.append(module)
-        return adapter_modules
-    
-    @staticmethod
-    def _create_new_module(lora_config, adapter_name, target, **kwargs):
-        # Collect dispatcher functions to decide what backend to use for the replaced LoRA layer. The order matters,
-        # because the first match is always used. Therefore, the default layers should be checked last.
-        dispatchers = [dispatch_dynamic_dina]
-
-        new_module = None
-        for dispatcher in dispatchers:
-            new_module = dispatcher(
-                target, adapter_name, lora_config=lora_config, **kwargs)
-            if new_module is not None:  # first match wins
-                break
-
-        if new_module is None:
-            # no module could be matched
-            raise ValueError(
-                f"Target module {target} is not supported. Currently, only the following modules are supported: "
-                "`torch.nn.Linear`, `torch.nn.Embedding`, `torch.nn.Conv2d`, `transformers.pytorch_utils.Conv1D`."
-            )
-
-        return new_module
+    dispatchers = (dispatch_dynamic_dina,)
+    applicable_modules = (DinaLoraLayer,)
 
 
 class DinaLoraModel(LoraModel, DinaLoraMixin):
