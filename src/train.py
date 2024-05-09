@@ -133,33 +133,30 @@ def main():
                 encoded_dataset[key], model, hf_args.label_names or []
             )
 
-    if args.dynalora:
-        lora_config = get_config(
-            args.lora,
-            args.lora_r,
-            args.lora_alpha,
-            args.lora_dropout,
-            schedule_type=args.schedule_type,
-            allocator_type=args.allocator_type,
-            aggregate_type=args.aggregate_type,
-        )
-        if args.lora == "dynalora":
+    lora_config = get_config(
+        args.lora,
+        args.lora_r,
+        args.lora_alpha,
+        args.lora_dropout,
+        schedule_type=args.schedule_type,
+        allocator_type=args.allocator_type,
+        aggregate_type=args.aggregate_type,
+    )
+    match args.lora:
+        case "dynalora":
             model = PeftModelWrapper(
                 peft_model=DynaLoraModel(model, lora_config, "dynalora"),
                 peft_config=lora_config,
                 adapter_name="dynalora",
             )
-        else:
+        case "dinalora":
             model = PeftModelWrapper(
                 peft_model=DinaLoraModel(model, lora_config, "dinalora"),
                 peft_config=lora_config,
                 adapter_name="dinalora",
             )
-    else:
-        peft_config = get_config(
-            args.lora, args.lora_r, args.lora_alpha, args.lora_dropout
-        )
-        model = get_peft_model(model, peft_config)
+        case _:
+            model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
     metric_name = (

@@ -136,6 +136,16 @@ class DinaLoraMixin(DynaLoraMixin):
         
         it overrides the _create_new_module function of BasePeftModel
     """
+    def _find_adapter_modules(self):
+        """
+        Find all adapter modules in the model
+        """
+        adapter_modules = []
+        for _, module in self.model.named_modules():
+            if isinstance(module, DinaLoraLayer):
+                adapter_modules.append(module)
+        return adapter_modules
+    
     @staticmethod
     def _create_new_module(lora_config, adapter_name, target, **kwargs):
         # Collect dispatcher functions to decide what backend to use for the replaced LoRA layer. The order matters,
