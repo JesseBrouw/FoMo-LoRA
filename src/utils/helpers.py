@@ -1,4 +1,5 @@
 import numpy as np
+import inspect
 
 
 def preprocess_function_builder(task, tokenizer):
@@ -27,7 +28,6 @@ def preprocess_function_builder(task, tokenizer):
 
     return preprocess_function
 
-
 def compute_metrics(eval_pred, task, metric):
     predictions, labels = eval_pred
     if task != "stsb":
@@ -35,3 +35,21 @@ def compute_metrics(eval_pred, task, metric):
     else:
         predictions = predictions[:, 0]
     return metric.compute(predictions=predictions, references=labels)
+
+def get_model_signature(target_model, label_names = []):
+    """Get the signature of the target model"""
+    signature = inspect.signature(target_model.forward)
+    signature_columns = list(signature.parameters.keys())
+    # Labels may be named label or label_ids, the default data collator handles that.
+    signature_columns += list(
+        set(["label", "label_ids"] + label_names))
+    return signature_columns
+
+def remove_unused_columns(dataset, target_model, label_names = []):
+    """Remove columns that are not used for the task
+
+    NOTE: This is a simplified version of transformers.trainer.Trainer._remove_unused_columns
+    """
+    columns_needed = get_model_signature(target_model, label_names)
+    columns_not_needed = set(dataset.column_names) - set(columns_needed)
+    return dataset.remove_columns(columns_not_needed)

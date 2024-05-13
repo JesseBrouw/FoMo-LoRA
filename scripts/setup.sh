@@ -20,7 +20,7 @@ git submodule update --init --recursive
 
 # install peft
 cd "$ROOT/peft"
-python setup.py install
+python -m pip install .
 
 echo "Setup complete. Run"
 echo 

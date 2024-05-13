@@ -39,3 +39,12 @@ class ModelArguments:
     device: str = dataclasses.field(
         default="cuda", metadata={"help": "The device to use."}
     )
+    schedule_type: str = dataclasses.field(
+        default="no_schedule", metadata={"help": "The schedule type."}
+    )
+    allocator_type: str = dataclasses.field(
+        default="topk;1", metadata={"help": "The allocator type."}
+    )
+    aggregate_type: str = dataclasses.field(
+        default="l2", metadata={"help": "The aggregate type."}
+    )

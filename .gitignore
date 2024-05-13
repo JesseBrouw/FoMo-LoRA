@@ -164,4 +164,4 @@ checkpoint-*
 # VSCode
 #  ignores the .vscode directory
 .vscode
-
+*.DS_Store
