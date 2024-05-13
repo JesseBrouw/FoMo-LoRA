@@ -64,7 +64,8 @@ class MultinomialAllocator(BaseAllocator):
         the multinomial distribution whose parameters are given by the values.
     """
     def __call__(self, values: List[float]) -> torch.Tensor:
-        values = torch.tensor(values)
+        values = torch.tensor(values, dtype=torch.float)
+        print("VaLs: ", values)
         mask = torch.zeros_like(values)
         mask[torch.multinomial(values, self.k)] = 1
         return mask
