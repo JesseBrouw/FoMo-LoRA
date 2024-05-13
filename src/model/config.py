@@ -11,25 +11,20 @@ class DynaLoraConfig(LoraConfig):
     """
         Configuration for the dynamic LoRA model.
 
-        Parameters:
-        - schedule: BaseSchedule
-            The schedule type that will determine how ofter the adapters are updated.
-            by default, only once in the beginning.
-        - aggregate_type: str
-            The type of aggregation to use for the cumulative activations. 
-            Currently, only 'l2' is supported.
-        - k: int 
-            The number of active modules in the model.
-            If k is set, k_percent is ignored.
-        - k_percent: float
-            The percentage of active modules in the model.
-            If k is set, k_percent is ignored.
+        Attributes:
+        - schedule_type (str): The schedule type that will determine how often the adapters are updated.
+        By default, only once in the beginning. Possible choices are 'no_schedule', 'once;<after_step>', 'periodic;<interval>'.
+        - allocator_type (str): The allocator type that will determine how to select the active modules.
+        Possible choices are 'topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>'.
+        - aggregate_type (Literal['l2', 'l1']): The type of aggregation to use for the cumulative activations.
+        Currently, only 'l2' and 'l1' are supported.
     """
     schedule_type: str = field(
         default='no_schedule',
-        metadata={'description': 'The schedule type that will determine how often the adapters are updated. By default, only once in the beginning.', 'choices': ['no_schedule', 'once;<after_step>', 'periodic;<interval>']})
-    allocator_type: str = field(default='topk;1', metadata={'description': 'The allocator type that will determine how to select the active modules.', 'choices': ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>']})
-    aggregate_type: Literal['l2', 'l1'] = field(default='l2')
+        metadata={'help': ("The schedule type that will determine how often the adapters are updated. By default, only once in the beginning. Choices: ['no_schedule', 'once;<after_step>', 'periodic;<interval>']")})
+    allocator_type: str = field(default='topk;1', metadata={'help': ("The allocator type that will determine how to select the active modules. Choices: ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>']")})
+    aggregate_type: Literal['l2', 'l1'] = field(default='l2', 
+                                                metadata={'help': ("The type of aggregation to use for the cumulative activations. Choices: ['l2', 'l1']")})
 
     def __post_init__(self):
         super().__post_init__()
