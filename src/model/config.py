@@ -60,7 +60,7 @@ class DynaLoraConfig(LoraConfig):
         elif allocator == 'topk':
             return TopKAllocator(k=int(args[0]))
         elif allocator == 'threshold':
-            return ThresholdAllocator(T=float(args[0]))
+            return ThresholdAllocator(threshold=float(args[0]))
         elif allocator == 'multinomial':
             return MultinomialAllocator(k=int(args[0]))
         elif allocator == 'scaled_multinomial':
