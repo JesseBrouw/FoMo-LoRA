@@ -163,6 +163,9 @@ class DynaLoraLayer(LoraLayer):
     def __init__(self, *args, **kwargs):
         # loraLayer is typically initialized through another inheritance path
         # super().__init__(*args, **kwargs)
+        
+        # this is needed to put cum_acts on the right device because the addition won't work in forward if they are on different devices
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         peft_config = kwargs.get("peft_config", None)
         if peft_config is None:
@@ -173,7 +176,8 @@ class DynaLoraLayer(LoraLayer):
         self.reset_cum_acts()
 
     def reset_cum_acts(self):
-        self._cum_acts = torch.tensor(0.0, requires_grad=False)
+        # initializing to small epsilon otherwise multinomial allocator will fail because values can't be all 0
+        self._cum_acts = torch.tensor(1e-6, requires_grad=False).to(self.device)
 
     def activate(self):
         """
@@ -205,7 +209,10 @@ class Linear(LoraLinear, DynaLoraLayer):
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
         result = super().forward(x, *args, **kwargs)
-        self._cum_acts += self.aggregator(result)
+        #print("result: ", result)  
+        aggregated = self.aggregator(result.detach())
+        #print("Aggregated: ", aggregated)
+        self._cum_acts = self._cum_acts + aggregated
         return result
 
 def dispatch_dynamic(
