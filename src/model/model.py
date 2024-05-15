@@ -46,7 +46,7 @@ class BaseMixin(AbstractMixin):
             os.makedirs(output_dir)
         self.output_path = os.path.join(output_dir, "dynalora_logs.json")
         data = {"schedule": self.peft_config["dynalora"].schedule_type, "allocator": self.peft_config["dynalora"].allocator_type, "aggregate": self.peft_config["dynalora"].aggregate_type,
-                "cum_acts": [], "masks": []}
+                "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
         with open(self.output_path, "w") as f:
             json.dump(data, f)
 
@@ -132,9 +132,12 @@ class BaseMixin(AbstractMixin):
         Find all adapter modules in the model
         """
         adapter_modules = []
-        for _, module in self.model.named_modules():
+        self.adapter_base_names = []
+        for name, module in self.model.named_modules():
             if isinstance(module, self.applicable_modules):
                 adapter_modules.append(module)
+                # this will be logged to json
+                self.adapter_base_names.append(name)
         return adapter_modules
 
 # DynaLoRA
