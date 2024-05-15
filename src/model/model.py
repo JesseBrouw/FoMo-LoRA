@@ -156,6 +156,7 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
                  adapter_name: str) -> None:
+        peft_config.target_modules = "all-linear"
         LoraModel.__init__(self, model, peft_config, adapter_name)
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 
