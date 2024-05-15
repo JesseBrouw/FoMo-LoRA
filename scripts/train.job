@@ -21,4 +21,4 @@ module load 2023
 module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
 source $WORK_DIR/.venv/bin/activate
 
-TOKENIZERS_PARALLELISM=false python -m src.train --output_dir output --task sst2 --epochs 60 --batch_size 64 --learning_rate 5e-4 --lora_alpha 8 --lora_r 8 --bf16 # --torch_compile
+TOKENIZERS_PARALLELISM=false python -m src.train --lora dynalora --schedule_type "periodic;100" --allocator_type "multinomial;10" --aggregate_type='l2' --output_dir output --task sst2 --epochs 60 --batch_size 64 --learning_rate 5e-4 --lora_alpha 8 --lora_r 8 --bf16 # --torch_compile
