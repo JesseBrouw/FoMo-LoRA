@@ -32,23 +32,28 @@ class DinaLoraLayer(LoraLayer):
         peft_config = kwargs.get("peft_config", None)
         if peft_config is None:
             raise ValueError("peft_config is required.")
-
+        # counter to keep track of the number of forward passes.
+        # Used by the allocator and we can also log it.
+        self._counter = torch.tensor(0, requires_grad=False)
+        self._is_active = False
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
-        
+
     def activate(self):
         """
             Enable gradients for the layer. (TODO: THIS IS NOT THE REAL IDEA, I WANT TO EXAMINE THE GRADIENTS OF THE BASE LAYER NOT THE ADAPTER, BUT GOTTA FIGURE OUT HOW TO TRACK THEM JUST FOR THE FIRST FEW ITERATIONS, i.e. full FT in the start, then switch to DINA/DYNA)
         """
+        self._is_active = True
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = True
                 param.grad_hook = GradientHook(param)
-        
+
     def deactivate(self):
         """
             Disable gradients for the layer.
         """
+        self._is_active = False
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = False
@@ -56,6 +61,12 @@ class DinaLoraLayer(LoraLayer):
                     param.grad_hook.remove()
     def reset_cum_acts(self):
         self._cum_acts = torch.tensor(0.0, requires_grad=False)
+    @property
+    def cum_acts(self):
+        return self._cum_acts
+    @property
+    def counter(self):
+        return self._counter 
 
 
 class DinaLinear(LoraLinear, DinaLoraLayer):
@@ -67,6 +78,10 @@ class DinaLinear(LoraLinear, DinaLoraLayer):
         DinaLoraLayer.__init__(self, *args, **kwargs)
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
+        if self._is_active:
+            # increment the counter only if
+            # the layer is active
+            self._counter += 1
         # copy-paste from LoraLinear
         self._check_forward_args(x, *args, **kwargs)
         adapter_names = kwargs.pop("adapter_names", None)
@@ -171,7 +186,10 @@ class DynaLoraLayer(LoraLayer):
         if peft_config is None:
             raise ValueError("peft_config is required.")
 
-
+        # counter to keep track of the number of forward passes.
+        # Used by the allocator and we can also log it.
+        self._counter = torch.tensor(0, requires_grad=False)
+        self._is_active = False
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
 
@@ -183,6 +201,7 @@ class DynaLoraLayer(LoraLayer):
         """
             Enable gradients for the layer.
         """
+        self._is_active = True
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = True
@@ -191,6 +210,7 @@ class DynaLoraLayer(LoraLayer):
         """
             Disable gradients for the layer.
         """
+        self._is_active = False
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = False
@@ -198,6 +218,9 @@ class DynaLoraLayer(LoraLayer):
     @property
     def cum_acts(self):
         return self._cum_acts
+    @property
+    def counter(self):
+        return self._counter
 
 class Linear(LoraLinear, DynaLoraLayer):
     """
@@ -208,6 +231,10 @@ class Linear(LoraLinear, DynaLoraLayer):
         DynaLoraLayer.__init__(self, *args, **kwargs)
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
+        if self._is_active:
+            # increment the counter only if
+            # the layer is active
+            self._counter += 1
         result = super().forward(x, *args, **kwargs)
         #print("result: ", result)  
         aggregated = self.aggregator(result.detach())

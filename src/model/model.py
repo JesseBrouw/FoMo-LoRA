@@ -37,7 +37,12 @@ class BaseMixin(AbstractMixin):
             )
         self.schedule = self.peft_config.schedule
         self.allocator = self.peft_config.allocator
-        # initialize the active modules
+        # find adapter modules
+        self.adapter_modules = self._find_adapter_modules()
+        # pass the list of modules to the allocator
+        self.allocator.set_adapter_modules(self.adapter_modules)
+        self.allocator.set_ouptut_path(self.output_path)
+        # initialize
         self._init_modules()
 
     def set_output_dir(self, output_dir):
@@ -82,16 +87,7 @@ class BaseMixin(AbstractMixin):
         """
             Randomly select modules to activate
         """
-
-        if not hasattr(self, "adapter_modules"):
-            self.adapter_modules = self._find_adapter_modules()
-        # use the *configured* choice function to obtain the k modules we want to activate
-        mask = self.allocator([1 for mod in self.adapter_modules])
-        for mod, msk in zip(self.adapter_modules, mask):
-            if msk:
-                mod.activate()
-            else:
-                mod.deactivate()
+        self.allocator()
 
     def reassign_active_modules(self):
         """
@@ -104,28 +100,9 @@ class BaseMixin(AbstractMixin):
 
         if not hasattr(self, "adapter_modules"):
             self.adapter_modules = self._find_adapter_modules()
-
-        # use the *configured* choice function to obtain the k modules we want to activate
-        cum_acts = [mod.cum_acts for mod in self.adapter_modules]
-        mask = self.allocator(cum_acts)
-
-        # activate the k modules, deactivate the rest.
-        #   this is easiest via linear search and
-        #   O(1) lookup
-        for mod, msk in zip(self.adapter_modules, mask):
-            if msk:
-                mod.activate()
-            else:
-                mod.deactivate()
-                
-        # log to json
-        with open(self.output_path, "r") as f:
-            data = json.load(f)
-            data["cum_acts"].append([cum_act.item() for cum_act in cum_acts])
-            data["masks"].append(mask.tolist())
-        with open(self.output_path, "w") as f:
-            json.dump(data, f)
-            
+        # Reassign the active modules
+        # and make a log entry
+        self.allocator()
 
     def _find_adapter_modules(self):
         """
