@@ -163,6 +163,9 @@ class DynaLoraLayer(LoraLayer):
     def __init__(self, *args, **kwargs):
         # loraLayer is typically initialized through another inheritance path
         # super().__init__(*args, **kwargs)
+        
+        # this is needed to put cum_acts on the right device because the addition won't work in forward if they are on different devices
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         peft_config = kwargs.get("peft_config", None)
         if peft_config is None:
@@ -173,7 +176,8 @@ class DynaLoraLayer(LoraLayer):
         self.reset_cum_acts()
 
     def reset_cum_acts(self):
-        self._cum_acts = torch.tensor(0.0, requires_grad=False)
+        # initializing to small epsilon otherwise multinomial allocator will fail because values can't be all 0
+        self._cum_acts = torch.tensor(1e-6, requires_grad=False).to(self.device)
 
     def activate(self):
         """
@@ -204,46 +208,12 @@ class Linear(LoraLinear, DynaLoraLayer):
         DynaLoraLayer.__init__(self, *args, **kwargs)
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
-        # copy-paste from LoraLinear
-        self._check_forward_args(x, *args, **kwargs)
-        adapter_names = kwargs.pop("adapter_names", None)
-
-        if self.disable_adapters:
-            if self.merged:
-                self.unmerge()
-            result = self.base_layer(x, *args, **kwargs)
-        elif adapter_names is not None:
-            result = self._mixed_batch_forward(
-                x, *args, adapter_names=adapter_names, **kwargs)
-        elif self.merged:
-            result = self.base_layer(x, *args, **kwargs)
-        else:
-            result = self.base_layer(x, *args, **kwargs)
-            torch_result_dtype = result.dtype
-            for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_A.keys():
-                    continue
-                lora_A = self.lora_A[active_adapter]
-                lora_B = self.lora_B[active_adapter]
-                dropout = self.lora_dropout[active_adapter]
-                scaling = self.scaling[active_adapter]
-                x = x.to(lora_A.weight.dtype)
-
-                if not self.use_dora[active_adapter]:
-                    # NOTE: this is the only place we do something different
-                    ab_path = lora_B(lora_A(dropout(x))) * scaling
-                    self._cum_acts = self._cum_acts + self.aggregator(ab_path.detach())
-                    result = result + ab_path
-                else:
-                    x = dropout(x)
-                    result = result + \
-                        self._apply_dora(x, lora_A, lora_B,
-                                         scaling, active_adapter)
-
-            result = result.to(torch_result_dtype)
-
+        result = super().forward(x, *args, **kwargs)
+        #print("result: ", result)  
+        aggregated = self.aggregator(result.detach())
+        #print("Aggregated: ", aggregated)
+        self._cum_acts = self._cum_acts + aggregated
         return result
-
 
 def dispatch_dynamic(
     target: torch.nn.Module,

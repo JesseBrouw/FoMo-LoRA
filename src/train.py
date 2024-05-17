@@ -149,6 +149,7 @@ def main():
                 peft_config=lora_config,
                 adapter_name="dynalora",
             )
+            model.set_output_dir(hf_args.output_dir)
         case "dinalora":
             model = PeftModelWrapper(
                 peft_model=DinaLoraModel(model, lora_config, "dinalora"),

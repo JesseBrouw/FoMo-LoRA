@@ -7,6 +7,9 @@ from .layer import DynaLoraLayer, Linear as DynaLoraLinear, dispatch_dynamic
 from .layer import DinaLoraLayer, DinaLinear as DinaLoraLinear, dispatch_dynamic_dina
 from .config import DynaLoraConfig
 
+import os
+import json
+
 # TODO: this should just be a mixin
 # Question: in which order does python look for method definitions?
 # Answer: it looks in the class itself first, then in the parent classes in the order they are defined.
@@ -36,6 +39,16 @@ class BaseMixin(AbstractMixin):
         self.allocator = self.peft_config.allocator
         # initialize the active modules
         self._init_modules()
+
+    def set_output_dir(self, output_dir):
+        # initialize logging file
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        self.output_path = os.path.join(output_dir, "dynalora_logs.json")
+        data = {"schedule": self.peft_config["dynalora"].schedule_type, "allocator": self.peft_config["dynalora"].allocator_type, "aggregate": self.peft_config["dynalora"].aggregate_type,
+                "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
+        with open(self.output_path, "w") as f:
+            json.dump(data, f)
 
     @classmethod
     def _create_new_module(cls, lora_config, adapter_name, target, **kwargs):
@@ -93,7 +106,8 @@ class BaseMixin(AbstractMixin):
             self.adapter_modules = self._find_adapter_modules()
 
         # use the *configured* choice function to obtain the k modules we want to activate
-        mask = self.allocator([mod.cum_acts for mod in self.adapter_modules])
+        cum_acts = [mod.cum_acts for mod in self.adapter_modules]
+        mask = self.allocator(cum_acts)
 
         # activate the k modules, deactivate the rest.
         #   this is easiest via linear search and
@@ -103,15 +117,27 @@ class BaseMixin(AbstractMixin):
                 mod.activate()
             else:
                 mod.deactivate()
+                
+        # log to json
+        with open(self.output_path, "r") as f:
+            data = json.load(f)
+            data["cum_acts"].append([cum_act.item() for cum_act in cum_acts])
+            data["masks"].append(mask.tolist())
+        with open(self.output_path, "w") as f:
+            json.dump(data, f)
+            
 
     def _find_adapter_modules(self):
         """
         Find all adapter modules in the model
         """
         adapter_modules = []
-        for _, module in self.model.named_modules():
+        self.adapter_base_names = []
+        for name, module in self.model.named_modules():
             if isinstance(module, self.applicable_modules):
                 adapter_modules.append(module)
+                # this will be logged to json
+                self.adapter_base_names.append(name)
         return adapter_modules
 
 # DynaLoRA
@@ -130,6 +156,7 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
                  adapter_name: str) -> None:
+        peft_config.target_modules = "all-linear"
         LoraModel.__init__(self, model, peft_config, adapter_name)
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 

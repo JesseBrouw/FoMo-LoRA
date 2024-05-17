@@ -43,6 +43,7 @@ class ThresholdAllocator(BaseAllocator):
         and the values will be automatially normalized.
     """
     def __init__(self, threshold: float) -> None:
+        super().__init__() # k here is not used
         if threshold < 0 or threshold > 1:
             raise ValueError("Threshold must be in the range [0,1].")
         self.threshold = threshold
@@ -63,8 +64,11 @@ class MultinomialAllocator(BaseAllocator):
         Allocator that selects the elements according to
         the multinomial distribution whose parameters are given by the values.
     """
+    def __init__(self, k: int = 0) -> None:
+        super().__init__(k) # here k is the number of elements to sample
+    
     def __call__(self, values: List[float]) -> torch.Tensor:
-        values = torch.tensor(values)
+        values = torch.tensor(values, dtype=torch.float)
         mask = torch.zeros_like(values)
         mask[torch.multinomial(values, self.k)] = 1
         return mask
