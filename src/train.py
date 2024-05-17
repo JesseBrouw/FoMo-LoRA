@@ -3,6 +3,7 @@ import functools
 import time
 
 import torch
+from torch.optim import AdamW
 from datasets import load_dataset, load_metric
 from peft import LoraConfig, VeraConfig, TaskType, get_peft_model
 from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer
@@ -180,6 +181,12 @@ def main():
         save_strategy="epoch",
     )
 
+    # create an optimizer. One for each module
+    optimizer = AdamW([
+        {"params": adapter.parameters(), "lr": args.learning_rate}
+        for adapter in model.get_base_model().adapter_modules
+    ])
+
     validation_key = (
         "validation_mismatched"
         if task == "mnli-mm"
@@ -195,6 +202,7 @@ def main():
         eval_dataset=encoded_dataset[validation_key],
         tokenizer=tokenizer,  # Pass tokenizer again so that it pads correctly
         compute_metrics=functools.partial(compute_metrics, task=task, metric=metric),
+        optimizers=(optimizer, None),
     )
 
     tick = time.perf_counter()
