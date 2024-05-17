@@ -156,7 +156,9 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
 
     def __call__(self, *args, **kwargs):
         # first, see if reallocation is due
-        DynaLoraMixin.__call__(self, *args, **kwargs)
+        # only if in training mode
+        if self.model.training:
+            DynaLoraMixin.__call__(self, *args, **kwargs)
         # then, perform the forward pass
         return super().__call__(*args, **kwargs)
 
