@@ -34,7 +34,7 @@ class DinaLoraLayer(LoraLayer):
             raise ValueError("peft_config is required.")
         # counter to keep track of the number of forward passes.
         # Used by the allocator and we can also log it.
-        self._counter = torch.tensor(0, requires_grad=False)
+        self._counter = 0
         self._is_active = False
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
