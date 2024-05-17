@@ -1,7 +1,11 @@
 from peft import LoraConfig
 from dataclasses import dataclass, field
 from .schedule import BaseSchedule, OnceSchedule, PeriodicSchedule
-from .allocator import BaseAllocator, TopKAllocator, ThresholdAllocator, MultinomialAllocator
+from .allocator import (BaseAllocator,
+                        TopKAllocator,
+                        ThresholdAllocator,
+                        MultinomialAllocator,
+                        ScaledMultinomialAllocator)
 import warnings
 import torch
 from typing import Literal, Optional, Union
@@ -15,14 +19,14 @@ class DynaLoraConfig(LoraConfig):
         - schedule_type (str): The schedule type that will determine how often the adapters are updated.
         By default, only once in the beginning. Possible choices are 'no_schedule', 'once;<after_step>', 'periodic;<interval>'.
         - allocator_type (str): The allocator type that will determine how to select the active modules.
-        Possible choices are 'topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>'.
+        Possible choices are 'topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>;<gamma>'.
         - aggregate_type (Literal['l2', 'l1']): The type of aggregation to use for the cumulative activations.
         Currently, only 'l2' and 'l1' are supported.
     """
     schedule_type: str = field(
         default='no_schedule',
         metadata={'help': ("The schedule type that will determine how often the adapters are updated. By default, only once in the beginning. Choices: ['no_schedule', 'once;<after_step>', 'periodic;<interval>']")})
-    allocator_type: str = field(default='topk;1', metadata={'help': ("The allocator type that will determine how to select the active modules. Choices: ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>']")})
+    allocator_type: str = field(default='topk;1', metadata={'help': ("The allocator type that will determine how to select the active modules. Choices: ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>;<gamma>']")})
     aggregate_type: Literal['l2', 'l1'] = field(default='l2', 
                                                 metadata={'help': ("The type of aggregation to use for the cumulative activations. Choices: ['l2', 'l1']")})
 
@@ -64,7 +68,9 @@ class DynaLoraConfig(LoraConfig):
         elif allocator == 'multinomial':
             return MultinomialAllocator(k=int(args[0]))
         elif allocator == 'scaled_multinomial':
-            raise NotImplementedError('Scaled multinomial allocator is not implemented yet.')
+            if len(args) < 2:
+                raise ValueError('Scaled multinomial allocator requires two arguments.')
+            return ScaledMultinomialAllocator(k=int(args[0]), gamma=float(args[1]))
         else:
             warnings.warn('Invalid allocator type. Using topk;1 as default.')
             return TopKAllocator(k=1)

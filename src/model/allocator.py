@@ -1,6 +1,7 @@
 from typing import List
 from abc import ABC, abstractmethod
 import torch
+import json
 
 class BaseAllocator(ABC):
     """
@@ -12,13 +13,44 @@ class BaseAllocator(ABC):
     """
     def __init__(self, k: int = 0) -> None:
         self.k = k
+        self.adapter_modules = None # to be set by the model
+        self.output_path = None # for logging
+
+    def set_adapter_modules(self, adapter_modules: List):
+        self.adapter_modules = adapter_modules
+    def set_output_path(self, output_path: str):
+        self.output_path = output_path
 
     @abstractmethod
-    def __call__(self, values: List[float]) -> List[float]:
+    def __call__(self) -> List[float]:
         """
-            Given a list of values, return a list of masks.
+            Reallocate (activate/deactivate) the adapter modules based on their state.
         """
-        pass
+        mask = self._compute_mask()
+        for mod, msk in zip(self.adapter_modules, mask):
+            if msk:
+                mod.activate()
+            else:
+                mod.deactivate()
+
+    def _compute_mask(self) -> torch.Tensor:
+        """
+            Based on the adapter modules, compute the mask.
+
+            If self.ouptut_path is set, log the mask and the activations.
+        """
+        raise NotImplementedError("This method should be implemented by the derived class.")
+
+    def _make_json_log(self, acts, mask) -> None:
+        if self.output_path is None:
+            return
+        # log to json
+        with open(self.output_path, "r") as f:
+            data = json.load(f)
+            data["cum_acts"].append([act.item() for act in acts])
+            data["masks"].append(mask.tolist())
+        with open(self.output_path, "w") as f:
+            json.dump(data, f)
 
 class TopKAllocator(BaseAllocator):
     """
@@ -27,7 +59,10 @@ class TopKAllocator(BaseAllocator):
     def __init__(self, k: int = 0) -> None:
         super().__init__(k)
 
-    def __call__(self, values: List[float]) -> torch.Tensor:
+    def _compute_mask(self) -> torch.Tensor:
+        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+            raise ValueError("Adapter modules have not been set.")
+        values = [mod.cum_acts for mod in self.adapter_modules]
         values = torch.tensor(values)
         _, idx = torch.topk(values, self.k)
         mask = torch.zeros_like(values)
@@ -48,7 +83,10 @@ class ThresholdAllocator(BaseAllocator):
             raise ValueError("Threshold must be in the range [0,1].")
         self.threshold = threshold
 
-    def __call__(self, values: List[float]) -> torch.Tensor:
+    def _compute_mask(self) -> torch.Tensor:
+        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+            raise ValueError("Adapter modules have not been set.")
+        values = [mod.cum_acts for mod in self.adapter_modules]
         values, indices = torch.sort(torch.tensor(values), descending=True)
         # make sure they are normalized
         values = values / values.sum()
@@ -67,8 +105,35 @@ class MultinomialAllocator(BaseAllocator):
     def __init__(self, k: int = 0) -> None:
         super().__init__(k) # here k is the number of elements to sample
     
-    def __call__(self, values: List[float]) -> torch.Tensor:
+    def _compute_mask(self) -> torch.Tensor:
+        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+            raise ValueError("Adapter modules have not been set.")
+        values = [mod.cum_acts for mod in self.adapter_modules]
         values = torch.tensor(values, dtype=torch.float)
         mask = torch.zeros_like(values)
         mask[torch.multinomial(values, self.k)] = 1
+        return mask
+
+class ScaledMultinomialAllocator(BaseAllocator):
+    """
+        Allocator that selects modules based on their
+        scaled cumulative activations, using a multinomial distribution.
+
+        For a given module i, the weighted cumulative activations are computed as:
+        w_i = exp(mod_i.cum_acts)/sum(exp(mod_j.cum_acts) for j in adapter_modules) + gamma * 1/mod_i.counter
+    """
+    def __init__(self, k: int, gamma: float) -> None:
+        super().__init__(k) # here k is the number of elements to sample
+        self.gamma = gamma
+
+    def _compute_mask(self) -> torch.Tensor:
+        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+            raise ValueError("Adapter modules have not been set.")
+        acts = torch.tensor([mod.cum_acts for mod in self.adapter_modules], requires_grad=False)
+        counter = torch.tensor([mod.counter for mod in self.adapter_modules], requires_grad=False)
+        weights = torch.exp(acts) / torch.exp(acts).sum() + \
+            self.gamma * (1/counter)+1e-6
+
+        mask = torch.zeros_like(weights)
+        mask[torch.multinomial(weights, self.k, replacement=True)] = 1
         return mask
