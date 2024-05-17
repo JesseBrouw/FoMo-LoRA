@@ -220,6 +220,9 @@ def main():
         compute_metrics=functools.partial(compute_metrics, task=task, metric=metric),
     )
 
+    # initialize modules (if needed)
+    getattr(model, "init_modules", lambda: None)()
+
     tick = time.perf_counter()
 
     class ProfCallback(TrainerCallback):

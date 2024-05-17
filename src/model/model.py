@@ -41,19 +41,27 @@ class BaseMixin(AbstractMixin):
         self.adapter_modules = self._find_adapter_modules()
         # pass the list of modules to the allocator
         self.allocator.set_adapter_modules(self.adapter_modules)
-        self.allocator.set_ouptut_path(self.output_path)
-        # initialize
-        self._init_modules()
+        # do NOT initialize the modules here, 
+        # because the optimizer might sitll want to discover them
+        # based on their gradients
+        # call BaseMixin.init_modules() instead
 
     def set_output_dir(self, output_dir):
         # initialize logging file
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         self.output_path = os.path.join(output_dir, "dynalora_logs.json")
-        data = {"schedule": self.peft_config["dynalora"].schedule_type, "allocator": self.peft_config["dynalora"].allocator_type, "aggregate": self.peft_config["dynalora"].aggregate_type,
-                "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
+        data = {
+            "schedule": self.peft_config["dynalora"].schedule_type,
+            "allocator": self.peft_config["dynalora"].allocator_type,
+            "aggregate": self.peft_config["dynalora"].aggregate_type,
+            "adapter_base_names": self.adapter_base_names,
+            "cum_acts": [],
+            "masks": []
+        }
         with open(self.output_path, "w") as f:
             json.dump(data, f)
+        self.allocator.set_output_path(self.output_path)
 
     @classmethod
     def _create_new_module(cls, lora_config, adapter_name, target, **kwargs):
@@ -83,7 +91,7 @@ class BaseMixin(AbstractMixin):
             self.reassign_active_modules()
         self.schedule.step()
 
-    def _init_modules(self):
+    def init_modules(self):
         """
             Randomly select modules to activate
         """

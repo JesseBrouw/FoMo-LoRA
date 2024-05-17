@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from abc import ABC, abstractmethod
 import torch
 import json
@@ -21,7 +21,6 @@ class BaseAllocator(ABC):
     def set_output_path(self, output_path: str):
         self.output_path = output_path
 
-    @abstractmethod
     def __call__(self) -> List[float]:
         """
             Reallocate (activate/deactivate) the adapter modules based on their state.
@@ -47,8 +46,8 @@ class BaseAllocator(ABC):
         # log to json
         with open(self.output_path, "r") as f:
             data = json.load(f)
-            data["cum_acts"].append([act.item() for act in acts])
-            data["masks"].append(mask.tolist())
+            data["cum_acts"].append(acts)
+            data["masks"].append(mask)
         with open(self.output_path, "w") as f:
             json.dump(data, f)
 
@@ -67,6 +66,8 @@ class TopKAllocator(BaseAllocator):
         _, idx = torch.topk(values, self.k)
         mask = torch.zeros_like(values)
         mask[idx] = 1
+        # log
+        self._make_json_log(values.tolist(), mask.tolist())
         return mask
 
 class ThresholdAllocator(BaseAllocator):
@@ -94,7 +95,8 @@ class ThresholdAllocator(BaseAllocator):
         csum = values.cumsum(dim=0)
         mask = torch.zeros_like(values)
         mask[indices[csum < self.threshold]] = 1
-
+        # log
+        self._make_json_log(values.tolist(), mask.tolist())
         return mask
 
 class MultinomialAllocator(BaseAllocator):
@@ -112,6 +114,8 @@ class MultinomialAllocator(BaseAllocator):
         values = torch.tensor(values, dtype=torch.float)
         mask = torch.zeros_like(values)
         mask[torch.multinomial(values, self.k)] = 1
+        # log
+        self._make_json_log(values.tolist(), mask.tolist())
         return mask
 
 class ScaledMultinomialAllocator(BaseAllocator):
@@ -131,9 +135,11 @@ class ScaledMultinomialAllocator(BaseAllocator):
             raise ValueError("Adapter modules have not been set.")
         acts = torch.tensor([mod.cum_acts for mod in self.adapter_modules], requires_grad=False)
         counter = torch.tensor([mod.counter for mod in self.adapter_modules], requires_grad=False)
-        weights = torch.exp(acts) / torch.exp(acts).sum() + \
-            self.gamma * (1/counter)+1e-6
+        weights = acts / acts.sum() + \
+            self.gamma * 1/(counter+1e-6)
 
         mask = torch.zeros_like(weights)
         mask[torch.multinomial(weights, self.k, replacement=True)] = 1
+        # log (sorry if I make stuff break but its good to see how the scaling works)
+        self._make_json_log({"acts": acts.tolist(), "weights": weights.tolist()}, mask.tolist())
         return mask
