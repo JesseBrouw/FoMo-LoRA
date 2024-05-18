@@ -144,21 +144,44 @@ def main():
     )
     match args.lora:
         case "dynalora":
-            model = PeftModelWrapper(
-                peft_model=DynaLoraModel(model, lora_config, "dynalora"),
-                peft_config=lora_config,
-                adapter_name="dynalora",
-            )
+            if lora_config.task_type==TaskType.SEQ_CLS:
+                # this is needed because otherwise peft won't save the classifier weights to the checkpoints
+                # this mechanism is implemented in PeftModelForSequenceClassification class which is a subclass of PeftModel,
+                # but the PeftModel.__init__() cannot be called from the PeftModelWrapper because there are some stuffs 
+                # which are not compatible with DynaLoraModel (Miki feel free to detail which are those).
+                # Instead the stuffs needed from PeftModel are implemented in PeftModelWrapper. 
+                lora_config.modules_to_save = ["classifier", "score"]
+                model = PeftModelWrapper(
+                    peft_model=DynaLoraModel(model, lora_config, "dynalora"),
+                    peft_config=lora_config,
+                    adapter_name="dynalora",
+                )
+                
+            else:
+                print("Task type not supported for DynaLora. Only Sequence classification is supported yet.")
+                exit(1)
             model.set_output_dir(hf_args.output_dir)
         case "dinalora":
-            model = PeftModelWrapper(
-                peft_model=DinaLoraModel(model, lora_config, "dinalora"),
-                peft_config=lora_config,
-                adapter_name="dinalora",
-            )
+            if lora_config.task_type==TaskType.SEQ_CLS:
+                # this is needed because otherwise peft won't save the classifier weights to the checkpoints
+                # this mechanism is implemented in PeftModelForSequenceClassification class which is a subclass of PeftModel,
+                # but the PeftModel.__init__() cannot be called from the PeftModelWrapper because there are some stuffs 
+                # which are not compatible with DynaLoraModel (Miki feel free to detail which are those).
+                # Instead the stuffs needed from PeftModel are implemented in PeftModelWrapper. 
+                lora_config.modules_to_save = ["classifier", "score"]
+                model = PeftModelWrapper(
+                    peft_model=DinaLoraModel(model, lora_config, "dinalora"),
+                    peft_config=lora_config,
+                    adapter_name="dinalora",
+                )
+            else:
+                print("Task type not supported for DinaLora. Only Sequence classification is supported yet.")
+                exit(1)
         case _:
             model = get_peft_model(model, lora_config)
+    print(model)
     model.print_trainable_parameters()
+    #exit(1)
 
     metric_name = (
         "pearson"
@@ -220,7 +243,7 @@ def main():
         record_shapes=True,
     ) as prof:
         trainer.add_callback(ProfCallback(prof=prof))
-        trainer.train()
+        trainer.train(resume_from_checkpoint=hf_args.resume_from_checkpoint)
     trainer.save_model(hf_args.output_dir)
     print(f"Training took {time.perf_counter() - tick:.2f}s")
 

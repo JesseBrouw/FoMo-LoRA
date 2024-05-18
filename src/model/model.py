@@ -1,7 +1,7 @@
 from peft import LoraModel
 from peft.config import PeftConfig
 from typing import Any, Callable, Union, List, Tuple, Dict
-from transformers import PreTrainedModel
+from transformers import PreTrainedModel, RobertaForSequenceClassification
 
 from .layer import DynaLoraLayer, Linear as DynaLoraLinear, dispatch_dynamic
 from .layer import DinaLoraLayer, DinaLinear as DinaLoraLinear, dispatch_dynamic_dina
@@ -156,8 +156,17 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
                  adapter_name: str) -> None:
-        peft_config.target_modules = "all-linear"
-        LoraModel.__init__(self, model, peft_config, adapter_name)
+        #peft_config.target_modules = "all-linear" # this would unfortunately inject LoRA on the random initialized classification layers too
+        if isinstance(model, RobertaForSequenceClassification):
+            peft_config.target_modules = target_modules=["key","query","value",
+                                                        "attention.output.dense",
+                                                        "intermediate.dense",
+                                                        "output.dense"]
+        else:
+            print("Dynalora is only supported for RobertaForSequenceClassification for now.")
+            exit(1)
+        # TODO: Define target modules for other models
+        LoraModel.__init__(self, model, peft_config, adapter_name) # this would inject LoRA on the classification layers too
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 
     def __call__(self, *args, **kwargs):
