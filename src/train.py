@@ -17,6 +17,11 @@ from transformers import (
 )
 from .model.config import DynaLoraConfig
 from .model.model import DinaLoraModel, DynaLoraModel
+from .model.optimizer import (
+    create_layerwise_optimizer_and_scheduler,
+    SUPPORTED_OPTIMIZERS
+    )
+
 from .utils.helpers import (
     compute_metrics,
     preprocess_function_builder,
@@ -243,6 +248,17 @@ def main():
         else "validation"
     )
 
+    # build the optimizer and scheduler
+    optimizer_arg = (None, None) # default to Trainer's constructors
+    if args.use_layerwise_optim and hf_args.optim.lower() in SUPPORTED_OPTIMIZERS:
+        optimizer_arg = create_layerwise_optimizer_and_scheduler(
+            model,
+            hf_args,
+            num_training_steps=len(encoded_dataset["train"]) * hf_args.num_train_epochs,
+            num_warmup_steps=(hf_args.warmup_steps if hf_args.warmup_steps > 0 else \
+                              hf_args.num_train_epochs * len(encoded_dataset["train"]) * hf_args.warmup_ratio),
+        )
+
     trainer = Trainer(
         model,
         hf_args,
@@ -250,6 +266,7 @@ def main():
         eval_dataset=encoded_dataset[validation_key],
         tokenizer=tokenizer,  # Pass tokenizer again so that it pads correctly
         compute_metrics=functools.partial(compute_metrics, task=task, metric=metric),
+        optimizers=optimizer_arg,
     )
 
     tick = time.time()

@@ -61,3 +61,7 @@ class ModelArguments:
     aggregate_type: str = dataclasses.field(
         default="l2", metadata={"help": "The aggregate type."}
     )
+    use_layerwise_optim: bool = dataclasses.field(
+        default=False,
+        metadata={'help': ("Whether to use layer-wise optimization. Default is False.")},
+        repr=True)
