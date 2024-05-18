@@ -126,17 +126,15 @@ class ScaledMultinomialAllocator(BaseAllocator):
         For a given module i, the weighted cumulative activations are computed as:
         w_i = exp(mod_i.cum_acts)/sum(exp(mod_j.cum_acts) for j in adapter_modules) + gamma * 1/mod_i.counter
     """
-    def __init__(self, k: int, gamma: float) -> None:
+    def __init__(self, k: int) -> None:
         super().__init__(k) # here k is the number of elements to sample
-        self.gamma = gamma
 
     def _compute_mask(self) -> torch.Tensor:
         if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
         acts = torch.tensor([mod.cum_acts for mod in self.adapter_modules], requires_grad=False)
         counter = torch.tensor([mod.counter for mod in self.adapter_modules], requires_grad=False)
-        weights = acts / acts.sum() + \
-            self.gamma * 1/(counter+1e-6)
+        weights = acts / acts.sum() * 1/(counter+1e-6)
 
         mask = torch.zeros_like(weights)
         mask[torch.multinomial(weights, self.k, replacement=True)] = 1
