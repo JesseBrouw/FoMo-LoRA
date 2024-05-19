@@ -7,82 +7,149 @@ from transformers.optimization import (
     LayerWiseDummyScheduler,
     get_scheduler
 )
+from transformers import TrainingArguments
 import logging
-logging.basicConfig(level=logging.DEBUG) 
 
+# supported optimizers
 SUPPORTED_OPTIMIZERS = {
     'adamw_torch': AdamW
 }
 
+class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
+    """
+        Dummy optimizer that can load the state from a dict.
+    """
+    def __init__(self,
+                 model: torch.nn.Module,
+                 config: TrainingArguments) -> None:
+        super().__init__([])
+        self.model = model
+        self.config = config
+        self.optimizer_dict = {}
+        self._make_optimizers()
+
+    def optimizer_hook(self, param):
+        if param.grad is not None:
+            self.optimizer_dict[param].step()
+            self.optimizer_dict[param].zero_grad()
+
+    def _make_optimizers(self):
+        """
+            Create a layer-wise optimizer based on the configuration.
+
+            For each **trainalbe** layer, we create an optimizer,
+            and register post_accumulate_gradient_hooks, which will handle the
+            gradient updates on a per-layer basis.
+        """
+        # get the optimizer class based on the configuration
+        optim_cls = SUPPORTED_OPTIMIZERS[self.config.optim.lower()]
+        optim_kwargs = {
+            "lr": self.config.learning_rate,
+            "eps": self.config.adam_epsilon,
+            "betas": (self.config.adam_beta1, self.config.adam_beta2),
+        }
+        # iterate over the model's parameters and create an optimizer and a scheduler
+        # for each trainable layer
+        self.optimizer_dict: Dict[int, torch.optim.Optimizer] = {}
+        self.name_to_param: Dict[str, torch.Tensor] = {}
+        self.param_to_name: Dict[torch.Tensor, str] = {}
+
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad:
+                continue
+            # create optimizer
+            optimizer = optim_cls([dict(params=[param])], **optim_kwargs)
+            self.optimizer_dict[param] = optimizer
+            self.name_to_param[name] = param
+            self.param_to_name[param] = name
+            logging.debug(f"Created optimizer for layer {name}")
+
+        for param in self.model.parameters():
+            if param.requires_grad:
+                param.register_post_accumulate_grad_hook(self.optimizer_hook)
+
+    def load_state_dict(self, state_dict: Dict[str, Any]):
+        for param, optimizer in self.optimizer_dict.items():
+            optimizer.load_state_dict(state_dict[self.param_to_name[param]])
+
+    def state_dict(self):
+        return {
+            self.param_to_name[param]: optimizer.state_dict()
+            for param, optimizer in self.optimizer_dict.items()
+        }
+
+class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
+    """
+        Dummy scheduler that can load the state from a dict.
+    """
+    def __init__(self,
+                 optimizer: LoadableLayerWiseDummyOptimizer,
+                 config: TrainingArguments,
+                 num_warmup_steps: int,
+                 num_training_steps: int) -> None:
+        super().__init__()
+        self.optimizer = optimizer
+        self.config = config
+        self.num_warmup_steps = num_warmup_steps
+        self.num_training_steps = num_training_steps
+        self.scheduler_dict = {}
+        self._make_schedulers()
+
+    def scheduler_hook(self, param):
+        if param.grad is not None:
+            self.scheduler_dict[param].step()
+
+    def _make_schedulers(self):
+        """
+            Create a layer-wise scheduler based on the configuration.
+
+            For each **trainalbe** layer, we create a scheduler,
+            and register post_accumulate_gradient_hooks, which will handle the
+            gradient updates on a per-layer basis.
+        """
+        # iterate over the model's parameters and create an optimizer and a scheduler
+        # for each trainable layer
+        self.scheduler_dict: Dict[torch.Tensor, torch.optim.lr_scheduler.LRScheduler] = {}
+
+        for param, optimizer in self.optimizer.optimizer_dict.items():
+            # create scheduler
+            scheduler = get_scheduler(
+                self.config.lr_scheduler_type,
+                optimizer,
+                num_warmup_steps=self.num_warmup_steps,
+                num_training_steps=self.num_training_steps,
+                scheduler_specific_kwargs=self.config.lr_scheduler_kwargs
+            )
+            self.scheduler_dict[param] = scheduler
+
+        for _, param in self.optimizer.name_to_param.items():
+            if param.requires_grad:
+                param.register_post_accumulate_grad_hook(self.scheduler_hook)
+
+    def load_state_dict(self, state_dict: Dict[str, Any]):
+        param_to_name = self.optimizer.param_to_name
+        for param, scheduler in self.scheduler_dict.items():
+            scheduler.load_state_dict(state_dict[param_to_name[param]])
+
+    def state_dict(self):
+        param_to_name = self.optimizer.param_to_name
+        return {
+            param_to_name[param]: scheduler.state_dict()
+            for param, scheduler in self.scheduler_dict.items()
+        }
+
 def create_layerwise_optimizer_and_scheduler(
-    model, config, num_training_steps, num_warmup_steps
+    model: torch.nn.Module,
+    config: TrainingArguments,
+    num_warmup_steps: int,
+    num_training_steps: int
 ):
     """
-        Create layer-wise optimizer and scheduler based on the configuration.
-        
-        For each **trainalbe** layer, we create an optimizer and a scheduler,
-        and register post_accumulate_gradient_hooks, which will handle the
-        gradient updates on a per-layer basis.
-        
-        This method returns a dummy optimizer and a dummy scheduler, which
-        should be passed to the transformers.Trainer's optimizers argument.
-        
-        NOTE: this method only handles the layer-wise case, in any other case
-        please refer to transformers.Trainer's relevant arguments.
+        Create a layer-wise optimizer and scheduler based on the configuration.
+
+        For each **trainalbe** layer, we create an optimizer and a scheduler
+        for each trainable layer.
     """
-    # get the optimizer class based on the configuration
-    optim_cls = SUPPORTED_OPTIMIZERS[config.optim.lower()]
-    optim_kwargs = {
-        "lr": config.learning_rate,
-        "eps": config.adam_epsilon,
-        "betas": (config.adam_beta1, config.adam_beta2),
-    }
-    # iterate over the model's parameters and create an optimizer and a scheduler
-    # for each trainable layer
-    optimizer_dict: Dict[torch.Tensor, torch.optim.Optimizer] = {}
-    scheduler_dict: Dict[torch.optim.Optimizer, torch.optim.lr_scheduler.LRScheduler] = {}
-    if logging.getLogger().level == logging.DEBUG:
-        param_name_map = {param: name for name, param in model.named_parameters()}
-    for name, param in model.named_parameters():
-        if not param.requires_grad:
-            continue
-        # create optimizer
-        optimizer = optim_cls([dict(params=[param])], **optim_kwargs)
-        optimizer_dict[param] = optimizer
-        # create scheduler
-        # NOTE: this is not entirely necessary, as the scheduler would be
-        # initialised layer-wise if the optimizer is also layer-wise,
-        # but it's more understandable what is going on 
-        # if everything is done explicitly here
-        scheduler = get_scheduler(
-            config.lr_scheduler_type,
-            optimizer,
-            num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps,
-            scheduler_specific_kwargs=config.lr_scheduler_kwargs
-        )
-        scheduler_dict[param] = scheduler
-        logging.debug(f"Created optimizer and scheduler for layer {name}")
-
-    def optimizer_hook(param):
-        if param.grad is not None:
-            if logging.getLogger().level == logging.DEBUG:
-                logging.debug(f"Updating layer {param_name_map[param]}")
-            optimizer_dict[param].step()
-            optimizer_dict[param].zero_grad()
-            scheduler_dict[param].step()
-
-    for param in model.parameters():
-        if param.requires_grad:
-            param.register_post_accumulate_grad_hook(optimizer_hook)
-
-    # create a dummy optimizer and scheduler
-    # we can choose to pass the dict of optimizers if the scheduler is not 
-    # explicitly initialised, the transformers library can also initialise it for us.
-    # the exact same behaviour is implemented in this function tho.
-    # we do not use this option right now, but it's good to have it
-    # optimizer = LayerWiseDummyOptimizer(optimizer_dict)
-    optimizer = LayerWiseDummyOptimizer(optimizer_dict={})
-    scheduler = LayerWiseDummyScheduler()
-
+    optimizer = LoadableLayerWiseDummyOptimizer(model, config)
+    scheduler = LoadableLayerWiseDummyScheduler(optimizer, config, num_warmup_steps, num_training_steps)
     return optimizer, scheduler
