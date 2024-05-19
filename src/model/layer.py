@@ -34,8 +34,8 @@ class DinaLoraLayer(LoraLayer):
             raise ValueError("peft_config is required.")
         # counter to keep track of the number of forward passes.
         # Used by the allocator and we can also log it.
-        self._counter = 0
-        self._is_active = False
+        self._counter = torch.tensor(0, requires_grad=False)
+        self._is_active = True
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
 
@@ -59,6 +59,7 @@ class DinaLoraLayer(LoraLayer):
                 param.requires_grad = False
                 if hasattr(param, "grad_hook"):
                     param.grad_hook.remove()
+
     def reset_cum_acts(self):
         self._cum_acts = torch.tensor(0.0, requires_grad=False)
     @property
@@ -68,6 +69,11 @@ class DinaLoraLayer(LoraLayer):
     def counter(self):
         return self._counter 
 
+    def get_state(self):
+        return {"cum_acts": self._cum_acts, 'is_active': self._is_active}
+    def set_state(self, state):
+        self._cum_acts = state["cum_acts"]
+        self._is_active = state["is_active"]
 
 class DinaLinear(LoraLinear, DinaLoraLayer):
     """
@@ -188,8 +194,9 @@ class DynaLoraLayer(LoraLayer):
 
         # counter to keep track of the number of forward passes.
         # Used by the allocator and we can also log it.
-        self._counter = torch.tensor(0, requires_grad=False)
-        self._is_active = False
+        self._counter = 0
+
+        self._is_active = True
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
 
@@ -222,6 +229,12 @@ class DynaLoraLayer(LoraLayer):
     def counter(self):
         return self._counter
 
+    def get_state(self):
+        return {"cum_acts": self._cum_acts, 'is_active': self._is_active}
+    def set_state(self, state):
+        self._cum_acts = state["cum_acts"]
+        self._is_active = state["is_active"]
+
 class Linear(LoraLinear, DynaLoraLayer):
     """
         Overrides lora.Linear with the cumulative activations tracking.
@@ -232,8 +245,7 @@ class Linear(LoraLinear, DynaLoraLayer):
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
         if self._is_active:
-            # increment the counter only if
-            # the layer is active
+            # increment the counter only if the layer is active
             self._counter += 1
         result = super().forward(x, *args, **kwargs)
         #print("result: ", result)  

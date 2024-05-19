@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from abc import ABC, abstractmethod
 import torch
 import json
@@ -13,11 +13,16 @@ class BaseAllocator(ABC):
     """
     def __init__(self, k: int = 0) -> None:
         self.k = k
-        self.adapter_modules = None # to be set by the model
+        self.named_adapter_modules = None # to be set by the model
         self.output_path = None # for logging
 
-    def set_adapter_modules(self, adapter_modules: List):
-        self.adapter_modules = adapter_modules
+    # placeholders for now.
+    def get_state(self):
+        return {}
+    def set_state(self, state):
+        pass
+    def set_adapter_modules(self, adapter_modules: Dict[str, Any]):
+        self.named_adapter_modules = adapter_modules
     def set_output_path(self, output_path: str):
         self.output_path = output_path
 
@@ -26,7 +31,7 @@ class BaseAllocator(ABC):
             Reallocate (activate/deactivate) the adapter modules based on their state.
         """
         mask = self._compute_mask()
-        for mod, msk in zip(self.adapter_modules, mask):
+        for mod, msk in zip(self.named_adapter_modules.values(), mask):
             if msk:
                 mod.activate()
             else:
@@ -59,9 +64,9 @@ class TopKAllocator(BaseAllocator):
         super().__init__(k)
 
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
-        values = [mod.cum_acts for mod in self.adapter_modules]
+        values = [mod.cum_acts for mod in self.named_adapter_modules.values()]
         values = torch.tensor(values)
         _, idx = torch.topk(values, self.k)
         mask = torch.zeros_like(values)
@@ -85,9 +90,9 @@ class ThresholdAllocator(BaseAllocator):
         self.threshold = threshold
 
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
-        values = [mod.cum_acts for mod in self.adapter_modules]
+        values = [mod.cum_acts for mod in self.named_adapter_modules.values()]
         values, indices = torch.sort(torch.tensor(values), descending=True)
         # make sure they are normalized
         values = values / values.sum()
@@ -108,9 +113,9 @@ class MultinomialAllocator(BaseAllocator):
         super().__init__(k) # here k is the number of elements to sample
     
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
-        values = [mod.cum_acts for mod in self.adapter_modules]
+        values = [mod.cum_acts for mod in self.named_adapter_modules.values()]
         values = torch.tensor(values, dtype=torch.float)
         mask = torch.zeros_like(values)
         mask[torch.multinomial(values, self.k)] = 1
@@ -130,10 +135,14 @@ class ScaledMultinomialAllocator(BaseAllocator):
         super().__init__(k) # here k is the number of elements to sample
 
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.adapter_modules is None:
+        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
-        acts = torch.tensor([mod.cum_acts for mod in self.adapter_modules], requires_grad=False)
-        counter = torch.tensor([mod.counter for mod in self.adapter_modules], requires_grad=False)
+        acts = torch.tensor(
+            [mod.cum_acts for mod in self.named_adapter_modules.values()],
+            requires_grad=False)
+        counter = torch.tensor(
+            [mod.counter for mod in self.named_adapter_modules.values()],
+            requires_grad=False)
         weights = acts / acts.sum() * 1/(counter+1e-6)
 
         mask = torch.zeros_like(weights)

@@ -38,10 +38,10 @@ class BaseMixin(AbstractMixin):
         self.schedule = self.peft_config.schedule
         self.allocator = self.peft_config.allocator
         # find adapter modules
-        self.adapter_modules = self._find_adapter_modules()
+        self.named_adapter_modules = self._find_adapter_modules()
         # pass the list of modules to the allocator
-        self.allocator.set_adapter_modules(self.adapter_modules)
-        # do NOT initialize the modules here, 
+        self.allocator.set_adapter_modules(self.named_adapter_modules)
+        # do NOT initialize the modules here,
         # because the optimizer might sitll want to discover them
         # based on their gradients
         # call BaseMixin.init_modules() instead
@@ -51,16 +51,14 @@ class BaseMixin(AbstractMixin):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         self.output_path = os.path.join(output_dir, "dynalora_logs.json")
-        data = {
-            "schedule": self.peft_config["dynalora"].schedule_type,
-            "allocator": self.peft_config["dynalora"].allocator_type,
-            "aggregate": self.peft_config["dynalora"].aggregate_type,
-            "adapter_base_names": self.adapter_base_names,
-            "cum_acts": [],
-            "masks": []
-        }
-        with open(self.output_path, "w") as f:
-            json.dump(data, f)
+        if not os.path.exists(self.output_path):
+            data = {"schedule": self.peft_config[self.adapter_name].schedule_type,
+                    "allocator": self.peft_config[self.adapter_name].allocator_type,
+                    "aggregate": self.peft_config[self.adapter_name].aggregate_type,
+                    "adapter_base_names": list(self.named_adapter_modules.keys()),
+                    "cum_acts": [], "masks": []}
+            with open(self.output_path, "w") as f:
+                json.dump(data, f)
         self.allocator.set_output_path(self.output_path)
 
     @classmethod
@@ -105,9 +103,6 @@ class BaseMixin(AbstractMixin):
             raise ValueError(
                 "This method is only supported for LoraModel instances, for now."
             )
-
-        if not hasattr(self, "adapter_modules"):
-            self.adapter_modules = self._find_adapter_modules()
         # Reassign the active modules
         # and make a log entry
         self.allocator()
@@ -116,14 +111,23 @@ class BaseMixin(AbstractMixin):
         """
         Find all adapter modules in the model
         """
-        adapter_modules = []
-        self.adapter_base_names = []
+        named_adapter_modules = {}
         for name, module in self.model.named_modules():
             if isinstance(module, self.applicable_modules):
-                adapter_modules.append(module)
                 # this will be logged to json
-                self.adapter_base_names.append(name)
-        return adapter_modules
+                named_adapter_modules[name] = module
+        return named_adapter_modules
+
+    def set_mask(self, mask):
+        """
+        Set the mask of the model
+        """
+        self.mask = mask
+        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
+            if msk:
+                mod.activate()
+            else:
+                mod.deactivate()
 
 # DynaLoRA
 class DynaLoraMixin(BaseMixin):
@@ -140,17 +144,7 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
-                 adapter_name: str) -> None:
-        #peft_config.target_modules = "all-linear" # this would unfortunately inject LoRA on the random initialized classification layers too
-        if isinstance(model, RobertaForSequenceClassification):
-            peft_config.target_modules = target_modules=["key","query","value",
-                                                        "attention.output.dense",
-                                                        "intermediate.dense",
-                                                        "output.dense"]
-        else:
-            print("Dynalora is only supported for RobertaForSequenceClassification for now.")
-            exit(1)
-        # TODO: Define target modules for other models
+                 adapter_name: str = 'default') -> None:
         LoraModel.__init__(self, model, peft_config, adapter_name) # this would inject LoRA on the classification layers too
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 
@@ -184,7 +178,7 @@ class DinaLoraModel(LoraModel, DinaLoraMixin):
     def __init__(self,
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
-                 adapter_name: str) -> None:
+                 adapter_name: str = 'default') -> None:
         LoraModel.__init__(self, model, peft_config, adapter_name)
         DinaLoraMixin.__init__(self, adapter_name, peft_config)
 
