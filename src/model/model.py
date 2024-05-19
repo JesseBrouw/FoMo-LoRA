@@ -45,7 +45,9 @@ class BaseMixin(AbstractMixin):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         self.output_path = os.path.join(output_dir, "dynalora_logs.json")
-        data = {"schedule": self.peft_config.schedule_type, "allocator": self.peft_config.allocator_type, "aggregate": self.peft_config.aggregate_type,
+        data = {"schedule": self.peft_config[self.adapter_name].schedule_type,
+                "allocator": self.peft_config[self.adapter_name].allocator_type,
+                "aggregate": self.peft_config[self.adapter_name].aggregate_type,
                 "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
         with open(self.output_path, "w") as f:
             json.dump(data, f)
@@ -156,16 +158,6 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
                  adapter_name: str) -> None:
-        #peft_config.target_modules = "all-linear" # this would unfortunately inject LoRA on the random initialized classification layers too
-        if isinstance(model, RobertaForSequenceClassification):
-            peft_config.target_modules = target_modules=["key","query","value",
-                                                        "attention.output.dense",
-                                                        "intermediate.dense",
-                                                        "output.dense"]
-        else:
-            print("Dynalora is only supported for RobertaForSequenceClassification for now.")
-            exit(1)
-        # TODO: Define target modules for other models
         LoraModel.__init__(self, model, peft_config, adapter_name) # this would inject LoRA on the classification layers too
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 

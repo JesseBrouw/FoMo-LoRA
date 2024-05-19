@@ -46,53 +46,92 @@ def get_model(model_name, num_labels):
     )
     return model, tokenizer
 
+def maybe_select_all_linear(model_name, target_modules):
+    if not (isinstance(target_modules, str) 
+            and target_modules == 'all-linear'):
+        return target_modules
+    all_linear = []
+    # list all 
+    if model_name == 'roberta-base':
+        return ["key", "query", "value",
+                "attention.output.dense",
+                "intermediate.dense", "output.dense"]
+    # TODO: Define target modules for other models
+    else:
+        raise ValueError("all-linear is only supported for roberta-base for now.")
+
+def get_modules_to_save(task_type):
+    # this is needed because otherwise peft won't save the classifier weights to the checkpoints
+    # this mechanism is implemented in PeftModelForSequenceClassification class which is a subclass of PeftModel,
+    # but the PeftModel.__init__() cannot be called from the PeftModelWrapper because there are some stuffs
+    # which are not compatible with DynaLoraModel (Miki feel free to detail which are those).
+    # Instead the stuffs needed from PeftModel are implemented in PeftModelWrapper.
+    if task_type == TaskType.SEQ_CLS:
+        return ["classifier", "score"]
+    else:
+        raise ValueError(f"Task type {task_type} is not supported yet.")
 
 def get_config(
     lora,
     r,
     alpha,
     dropout,
+    model_name,
+    target_modules=None,
     schedule_type=None,
     allocator_type=None,
     aggregate_type=None,
+    task_type=TaskType.SEQ_CLS,
 ):
+    # find target modules
+    target_modules = maybe_select_all_linear(model_name, target_modules)
+    # find modules to save
+    modules_to_save = get_modules_to_save(task_type)
     match lora:
         case "vera":
             peft_config = VeraConfig(
-                task_type=TaskType.SEQ_CLS,
+                task_type=task_type,
                 r=r,
                 vera_dropout=dropout,
+                target_modules=target_modules,
+                modules_to_save=modules_to_save
             )
         case "dynalora":
             peft_config = DynaLoraConfig(
-                task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
+                task_type=task_type,
                 inference_mode=False,
                 r=r,
                 lora_alpha=alpha,
                 lora_dropout=dropout,
+                target_modules=target_modules,
                 schedule_type=schedule_type,
                 allocator_type=allocator_type,
                 aggregate_type=aggregate_type,
+                modules_to_save=modules_to_save
             )
         case "dinalora":
             peft_config = DynaLoraConfig(
-                task_type=TaskType.SEQ_CLS,
+                task_type=task_type,
                 inference_mode=False,
                 r=r,
                 lora_alpha=alpha,
                 lora_dropout=dropout,
+                target_modules=target_modules,
                 schedule_type=schedule_type,
                 allocator_type=allocator_type,
                 aggregate_type=aggregate_type,
+                modules_to_save=modules_to_save
             )
 
         case _:
             peft_config = LoraConfig(
-                task_type=TaskType.SEQ_CLS,  # TODO: Add mapping for other task types
+                task_type=task_type,  # TODO: Add mapping for other task types
                 inference_mode=False,
                 r=r,
                 lora_alpha=alpha,
                 lora_dropout=dropout,
+                target_modules=target_modules,
+                modules_to_save=modules_to_save
             )
     return peft_config
 
@@ -138,6 +177,8 @@ def main():
         args.lora_r,
         args.lora_alpha,
         args.lora_dropout,
+        model_name=args.model_name,
+        target_modules=args.target_modules,
         schedule_type=args.schedule_type,
         allocator_type=args.allocator_type,
         aggregate_type=args.aggregate_type,
@@ -145,12 +186,6 @@ def main():
     match args.lora:
         case "dynalora":
             if lora_config.task_type==TaskType.SEQ_CLS:
-                # this is needed because otherwise peft won't save the classifier weights to the checkpoints
-                # this mechanism is implemented in PeftModelForSequenceClassification class which is a subclass of PeftModel,
-                # but the PeftModel.__init__() cannot be called from the PeftModelWrapper because there are some stuffs 
-                # which are not compatible with DynaLoraModel (Miki feel free to detail which are those).
-                # Instead the stuffs needed from PeftModel are implemented in PeftModelWrapper. 
-                lora_config.modules_to_save = ["classifier", "score"]
                 model = PeftModelWrapper(
                     peft_model=DynaLoraModel(model, lora_config, "dynalora"),
                     peft_config=lora_config,
@@ -181,7 +216,6 @@ def main():
             model = get_peft_model(model, lora_config)
     print(model)
     model.print_trainable_parameters()
-    #exit(1)
 
     metric_name = (
         "pearson"
