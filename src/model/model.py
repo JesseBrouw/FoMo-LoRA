@@ -157,7 +157,7 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
-                 adapter_name: str) -> None:
+                 adapter_name: str = 'default') -> None:
         LoraModel.__init__(self, model, peft_config, adapter_name) # this would inject LoRA on the classification layers too
         DynaLoraMixin.__init__(self, adapter_name, peft_config)
 
@@ -189,7 +189,7 @@ class DinaLoraModel(LoraModel, DinaLoraMixin):
     def __init__(self,
                  model: PreTrainedModel,
                  peft_config: PeftConfig,
-                 adapter_name: str) -> None:
+                 adapter_name: str = 'default') -> None:
         LoraModel.__init__(self, model, peft_config, adapter_name)
         DinaLoraMixin.__init__(self, adapter_name, peft_config)
 

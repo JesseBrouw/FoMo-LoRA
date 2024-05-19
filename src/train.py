@@ -187,11 +187,9 @@ def main():
         case "dynalora":
             if lora_config.task_type==TaskType.SEQ_CLS:
                 model = PeftModelWrapper(
-                    peft_model=DynaLoraModel(model, lora_config, "dynalora"),
-                    peft_config=lora_config,
-                    adapter_name="dynalora",
+                    peft_model=DynaLoraModel(model, lora_config),
+                    peft_config=lora_config
                 )
-                
             else:
                 print("Task type not supported for DynaLora. Only Sequence classification is supported yet.")
                 exit(1)
@@ -205,9 +203,8 @@ def main():
                 # Instead the stuffs needed from PeftModel are implemented in PeftModelWrapper. 
                 lora_config.modules_to_save = ["classifier", "score"]
                 model = PeftModelWrapper(
-                    peft_model=DinaLoraModel(model, lora_config, "dinalora"),
-                    peft_config=lora_config,
-                    adapter_name="dinalora",
+                    peft_model=DinaLoraModel(model, lora_config),
+                    peft_config=lora_config
                 )
             else:
                 print("Task type not supported for DinaLora. Only Sequence classification is supported yet.")

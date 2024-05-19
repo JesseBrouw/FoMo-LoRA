@@ -13,7 +13,7 @@ class PeftModelWrapper(PeftModel, Module):
         We use this class to wrap a DynaLoraModel instance
         and still be able to use all benefits of the PeftModel.
     """
-    def __init__(self, peft_model, peft_config, adapter_name) -> None:
+    def __init__(self, peft_model, peft_config, adapter_name: str = 'default') -> None:
         Module.__init__(self)
         # These args are special PEFT arguments that users can pass. They need to be removed before passing them to
         # forward.
