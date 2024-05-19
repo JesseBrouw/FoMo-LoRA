@@ -49,7 +49,8 @@ class BaseMixin(AbstractMixin):
             data = {"schedule": self.peft_config[self.adapter_name].schedule_type,
                     "allocator": self.peft_config[self.adapter_name].allocator_type,
                     "aggregate": self.peft_config[self.adapter_name].aggregate_type,
-                    "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
+                    "adapter_base_names": list(self.named_adapter_modules.keys()),
+                    "cum_acts": [], "masks": []}
             with open(self.output_path, "w") as f:
                 json.dump(data, f)
 
@@ -87,10 +88,10 @@ class BaseMixin(AbstractMixin):
         """
 
         if not hasattr(self, "adapter_modules"):
-            self.adapter_modules = self._find_adapter_modules()
+            self.named_adapter_modules = self._find_adapter_modules()
         # use the *configured* choice function to obtain the k modules we want to activate
-        mask = self.allocator([1 for mod in self.adapter_modules])
-        for mod, msk in zip(self.adapter_modules, mask):
+        self.mask = self.allocator([1 for mod in self.named_adapter_modules.values()])
+        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
             if msk:
                 mod.activate()
             else:
@@ -106,42 +107,50 @@ class BaseMixin(AbstractMixin):
             )
 
         if not hasattr(self, "adapter_modules"):
-            self.adapter_modules = self._find_adapter_modules()
+            self.named_adapter_modules = self._find_adapter_modules()
 
         # use the *configured* choice function to obtain the k modules we want to activate
-        cum_acts = [mod.cum_acts for mod in self.adapter_modules]
-        mask = self.allocator(cum_acts)
+        cum_acts = [mod.cum_acts for mod in self.named_adapter_modules.values()]
+        self.mask = self.allocator(cum_acts)
 
         # activate the k modules, deactivate the rest.
         #   this is easiest via linear search and
         #   O(1) lookup
-        for mod, msk in zip(self.adapter_modules, mask):
+        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
             if msk:
                 mod.activate()
             else:
                 mod.deactivate()
-                
+
         # log to json
         with open(self.output_path, "r") as f:
             data = json.load(f)
             data["cum_acts"].append([cum_act.item() for cum_act in cum_acts])
-            data["masks"].append(mask.tolist())
+            data["masks"].append(self.mask.tolist())
         with open(self.output_path, "w") as f:
             json.dump(data, f)
-            
 
     def _find_adapter_modules(self):
         """
         Find all adapter modules in the model
         """
-        adapter_modules = []
-        self.adapter_base_names = []
+        named_adapter_modules = {}
         for name, module in self.model.named_modules():
             if isinstance(module, self.applicable_modules):
-                adapter_modules.append(module)
                 # this will be logged to json
-                self.adapter_base_names.append(name)
-        return adapter_modules
+                named_adapter_modules[name] = module
+        return named_adapter_modules
+
+    def set_mask(self, mask):
+        """
+        Set the mask of the model
+        """
+        self.mask = mask
+        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
+            if msk:
+                mod.activate()
+            else:
+                mod.deactivate()
 
 # DynaLoRA
 class DynaLoraMixin(BaseMixin):
