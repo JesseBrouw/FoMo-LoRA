@@ -45,7 +45,7 @@ class BaseMixin(AbstractMixin):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         self.output_path = os.path.join(output_dir, "dynalora_logs.json")
-        data = {"schedule": self.peft_config["dynalora"].schedule_type, "allocator": self.peft_config["dynalora"].allocator_type, "aggregate": self.peft_config["dynalora"].aggregate_type,
+        data = {"schedule": self.peft_config.schedule_type, "allocator": self.peft_config.allocator_type, "aggregate": self.peft_config.aggregate_type,
                 "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
         with open(self.output_path, "w") as f:
             json.dump(data, f)
