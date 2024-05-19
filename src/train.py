@@ -24,6 +24,7 @@ from .utils.helpers import (
 from .utils.classes import ModelArguments
 from .utils.wrapper import PeftModelWrapper
 from transformers import HfArgumentParser
+from transformers import RobertaForSequenceClassification
 
 GLUE_TASKS = (
     "cola",
@@ -46,19 +47,18 @@ def get_model(model_name, num_labels):
     )
     return model, tokenizer
 
-def maybe_select_all_linear(model_name, target_modules):
-    if not (isinstance(target_modules, str) 
-            and target_modules == 'all-linear'):
-        return target_modules
-    all_linear = []
-    # list all 
-    if model_name == 'roberta-base':
-        return ["key", "query", "value",
-                "attention.output.dense",
-                "intermediate.dense", "output.dense"]
-    # TODO: Define target modules for other models
+def maybe_select_all_linear(model, target_modules):
+    isroberta = isinstance(model, RobertaForSequenceClassification)
+    if target_modules == 'all-linear':
+        if not isroberta:
+            raise ValueError(
+                "all-linear is only supported for roberta-base for now.")
+        else:
+            return ["key", "query", "value",
+                    "attention.output.dense",
+                    "intermediate.dense", "output.dense"]
     else:
-        raise ValueError("all-linear is only supported for roberta-base for now.")
+        return target_modules
 
 def get_modules_to_save(task_type):
     # this is needed because otherwise peft won't save the classifier weights to the checkpoints
@@ -76,7 +76,7 @@ def get_config(
     r,
     alpha,
     dropout,
-    model_name,
+    model,
     target_modules=None,
     schedule_type=None,
     allocator_type=None,
@@ -84,7 +84,7 @@ def get_config(
     task_type=TaskType.SEQ_CLS,
 ):
     # find target modules
-    target_modules = maybe_select_all_linear(model_name, target_modules)
+    target_modules = maybe_select_all_linear(model, target_modules)
     # find modules to save
     modules_to_save = get_modules_to_save(task_type)
     match lora:
@@ -177,7 +177,7 @@ def main():
         args.lora_r,
         args.lora_alpha,
         args.lora_dropout,
-        model_name=args.model_name,
+        model=model,
         target_modules=args.target_modules,
         schedule_type=args.schedule_type,
         allocator_type=args.allocator_type,
