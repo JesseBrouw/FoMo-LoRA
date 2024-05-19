@@ -45,12 +45,13 @@ class BaseMixin(AbstractMixin):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         self.output_path = os.path.join(output_dir, "dynalora_logs.json")
-        data = {"schedule": self.peft_config[self.adapter_name].schedule_type,
-                "allocator": self.peft_config[self.adapter_name].allocator_type,
-                "aggregate": self.peft_config[self.adapter_name].aggregate_type,
-                "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
-        with open(self.output_path, "w") as f:
-            json.dump(data, f)
+        if not os.path.exists(self.output_path):
+            data = {"schedule": self.peft_config[self.adapter_name].schedule_type,
+                    "allocator": self.peft_config[self.adapter_name].allocator_type,
+                    "aggregate": self.peft_config[self.adapter_name].aggregate_type,
+                    "adapter_base_names":self.adapter_base_names, "cum_acts": [], "masks": []}
+            with open(self.output_path, "w") as f:
+                json.dump(data, f)
 
     @classmethod
     def _create_new_module(cls, lora_config, adapter_name, target, **kwargs):
