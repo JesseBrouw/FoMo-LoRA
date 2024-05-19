@@ -37,8 +37,14 @@ class BaseMixin(AbstractMixin):
             )
         self.schedule = self.peft_config.schedule
         self.allocator = self.peft_config.allocator
-        # initialize the active modules
-        self._init_modules()
+        # find adapter modules
+        self.named_adapter_modules = self._find_adapter_modules()
+        # pass the list of modules to the allocator
+        self.allocator.set_adapter_modules(self.named_adapter_modules)
+        # do NOT initialize the modules here,
+        # because the optimizer might sitll want to discover them
+        # based on their gradients
+        # call BaseMixin.init_modules() instead
 
     def set_output_dir(self, output_dir):
         # initialize logging file
@@ -53,6 +59,7 @@ class BaseMixin(AbstractMixin):
                     "cum_acts": [], "masks": []}
             with open(self.output_path, "w") as f:
                 json.dump(data, f)
+        self.allocator.set_output_path(self.output_path)
 
     @classmethod
     def _create_new_module(cls, lora_config, adapter_name, target, **kwargs):
@@ -82,20 +89,11 @@ class BaseMixin(AbstractMixin):
             self.reassign_active_modules()
         self.schedule.step()
 
-    def _init_modules(self):
+    def init_modules(self):
         """
             Randomly select modules to activate
         """
-
-        if not hasattr(self, "adapter_modules"):
-            self.named_adapter_modules = self._find_adapter_modules()
-        # use the *configured* choice function to obtain the k modules we want to activate
-        self.mask = self.allocator([1 for mod in self.named_adapter_modules.values()])
-        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
-            if msk:
-                mod.activate()
-            else:
-                mod.deactivate()
+        self.allocator()
 
     def reassign_active_modules(self):
         """
@@ -105,30 +103,9 @@ class BaseMixin(AbstractMixin):
             raise ValueError(
                 "This method is only supported for LoraModel instances, for now."
             )
-
-        if not hasattr(self, "adapter_modules"):
-            self.named_adapter_modules = self._find_adapter_modules()
-
-        # use the *configured* choice function to obtain the k modules we want to activate
-        cum_acts = [mod.cum_acts for mod in self.named_adapter_modules.values()]
-        self.mask = self.allocator(cum_acts)
-
-        # activate the k modules, deactivate the rest.
-        #   this is easiest via linear search and
-        #   O(1) lookup
-        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
-            if msk:
-                mod.activate()
-            else:
-                mod.deactivate()
-
-        # log to json
-        with open(self.output_path, "r") as f:
-            data = json.load(f)
-            data["cum_acts"].append([cum_act.item() for cum_act in cum_acts])
-            data["masks"].append(self.mask.tolist())
-        with open(self.output_path, "w") as f:
-            json.dump(data, f)
+        # Reassign the active modules
+        # and make a log entry
+        self.allocator()
 
     def _find_adapter_modules(self):
         """
@@ -140,17 +117,6 @@ class BaseMixin(AbstractMixin):
                 # this will be logged to json
                 named_adapter_modules[name] = module
         return named_adapter_modules
-
-    def set_mask(self, mask):
-        """
-        Set the mask of the model
-        """
-        self.mask = mask
-        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
-            if msk:
-                mod.activate()
-            else:
-                mod.deactivate()
 
 # DynaLoRA
 class DynaLoraMixin(BaseMixin):
@@ -173,7 +139,9 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
 
     def __call__(self, *args, **kwargs):
         # first, see if reallocation is due
-        DynaLoraMixin.__call__(self, *args, **kwargs)
+        # only if in training mode
+        if self.model.training:
+            DynaLoraMixin.__call__(self, *args, **kwargs)
         # then, perform the forward pass
         return super().__call__(*args, **kwargs)
 
