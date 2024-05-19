@@ -33,6 +33,8 @@ class DinaLoraLayer(LoraLayer):
         if peft_config is None:
             raise ValueError("peft_config is required.")
 
+        self._is_active = True
+
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
         
@@ -40,6 +42,7 @@ class DinaLoraLayer(LoraLayer):
         """
             Enable gradients for the layer. (TODO: THIS IS NOT THE REAL IDEA, I WANT TO EXAMINE THE GRADIENTS OF THE BASE LAYER NOT THE ADAPTER, BUT GOTTA FIGURE OUT HOW TO TRACK THEM JUST FOR THE FIRST FEW ITERATIONS, i.e. full FT in the start, then switch to DINA/DYNA)
         """
+        self._is_active = True
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = True
@@ -49,6 +52,7 @@ class DinaLoraLayer(LoraLayer):
         """
             Disable gradients for the layer.
         """
+        self._is_active = False
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = False
@@ -57,6 +61,11 @@ class DinaLoraLayer(LoraLayer):
     def reset_cum_acts(self):
         self._cum_acts = torch.tensor(0.0, requires_grad=False)
 
+    def get_state(self):
+        return {"cum_acts": self._cum_acts, 'is_active': self._is_active}
+    def set_state(self, state):
+        self._cum_acts = state["cum_acts"]
+        self._is_active = state["is_active"]
 
 class DinaLinear(LoraLinear, DinaLoraLayer):
     """
@@ -171,6 +180,7 @@ class DynaLoraLayer(LoraLayer):
         if peft_config is None:
             raise ValueError("peft_config is required.")
 
+        self._is_active = True
 
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
@@ -183,6 +193,7 @@ class DynaLoraLayer(LoraLayer):
         """
             Enable gradients for the layer.
         """
+        self._is_active = True
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = True
@@ -191,6 +202,7 @@ class DynaLoraLayer(LoraLayer):
         """
             Disable gradients for the layer.
         """
+        self._is_active = False
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = False
@@ -198,6 +210,12 @@ class DynaLoraLayer(LoraLayer):
     @property
     def cum_acts(self):
         return self._cum_acts
+
+    def get_state(self):
+        return {"cum_acts": self._cum_acts, 'is_active': self._is_active}
+    def set_state(self, state):
+        self._cum_acts = state["cum_acts"]
+        self._is_active = state["is_active"]
 
 class Linear(LoraLinear, DynaLoraLayer):
     """
