@@ -48,7 +48,6 @@ class PeftModelWrapper(PeftModel, Module):
             return
         output_file = os.path.join(save_directory, f"{self.adapter_name}.pt")
         save_dict = {
-            'mask': dynalora_model.mask,
             'schedule': getattr(dynalora_model.schedule, 'get_state', lambda: {})(),
             'allocator': getattr(dynalora_model.allocator, 'get_state', lambda: {})(),
             'adapter_modules': {
@@ -70,9 +69,8 @@ class PeftModelWrapper(PeftModel, Module):
             return
         path = os.path.join(model_id, f"{adapter_name}.pt")
         states = torch.load(path)
-        dynalora_model.set_mask(states['mask'])
-        getattr(dynalora_model.allocator,'set_state', lambda: None)(states['allocator'])
-        getattr(dynalora_model.schedule,'set_state', lambda: None)(states['schedule'])
+        getattr(dynalora_model.allocator, 'set_state', lambda: None)(states['allocator'])
+        getattr(dynalora_model.schedule, 'set_state', lambda: None)(states['schedule'])
         for adapter_name, adapter in dynalora_model.named_adapter_modules.items():
             if adapter_name in states['adapter_modules']:
                 adapter.set_state(states['adapter_modules'][adapter_name])

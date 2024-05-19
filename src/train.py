@@ -254,6 +254,8 @@ def main():
 
     # initialize modules (if needed)
     getattr(model, "init_modules", lambda: None)()
+    print('initialized modules')
+    model.print_trainable_parameters()
 
     tick = time.perf_counter()
 

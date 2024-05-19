@@ -15,12 +15,15 @@ class BaseAllocator(ABC):
         self.k = k
         self.named_adapter_modules = None # to be set by the model
         self.output_path = None # for logging
+        self.mask = None # for loading/saving
 
     # placeholders for now.
     def get_state(self):
-        return {}
+        return {'mask': self.mask}
     def set_state(self, state):
-        pass
+        self.mask = state['mask']
+        self._apply_mask(self.mask)
+
     def set_adapter_modules(self, adapter_modules: Dict[str, Any]):
         self.named_adapter_modules = adapter_modules
     def set_output_path(self, output_path: str):
@@ -30,7 +33,10 @@ class BaseAllocator(ABC):
         """
             Reallocate (activate/deactivate) the adapter modules based on their state.
         """
-        mask = self._compute_mask()
+        self.mask = self._compute_mask()
+        self._apply_mask(self.mask)
+
+    def _apply_mask(self, mask: torch.Tensor) -> None:
         for mod, msk in zip(self.named_adapter_modules.values(), mask):
             if msk:
                 mod.activate()
@@ -135,7 +141,7 @@ class ScaledMultinomialAllocator(BaseAllocator):
         super().__init__(k) # here k is the number of elements to sample
 
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
+        if not hasattr(self, "named_adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
         acts = torch.tensor(
             [mod.cum_acts for mod in self.named_adapter_modules.values()],

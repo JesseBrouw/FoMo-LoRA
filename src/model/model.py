@@ -118,17 +118,6 @@ class BaseMixin(AbstractMixin):
                 named_adapter_modules[name] = module
         return named_adapter_modules
 
-    def set_mask(self, mask):
-        """
-        Set the mask of the model
-        """
-        self.mask = mask
-        for mod, msk in zip(self.named_adapter_modules.values(), self.mask):
-            if msk:
-                mod.activate()
-            else:
-                mod.deactivate()
-
 # DynaLoRA
 class DynaLoraMixin(BaseMixin):
     """
