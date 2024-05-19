@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import time
+import os
 
 import torch
 from datasets import load_dataset, load_metric
@@ -275,7 +276,7 @@ def main():
     ) as prof:
         trainer.add_callback(ProfCallback(prof=prof))
         trainer.train(resume_from_checkpoint=hf_args.resume_from_checkpoint)
-    trainer.save_model(hf_args.output_dir)
+    trainer.save_model(os.path.join(hf_args.output_dir, 'final')) # otherwise it gets messy
     print(f"Training took {time.perf_counter() - tick:.2f}s")
 
 

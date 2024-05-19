@@ -13,6 +13,12 @@ class BaseAllocator(ABC):
     def __init__(self, k: int = 0) -> None:
         self.k = k
 
+    # placeholders for now.
+    def get_state(self):
+        return {}
+    def set_state(self, state):
+        pass
+
     @abstractmethod
     def __call__(self, values: List[float]) -> List[float]:
         """

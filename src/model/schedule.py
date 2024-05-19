@@ -15,7 +15,12 @@ class BaseSchedule(ABC):
     def step(self):
         """Increment the step counter."""
         self.n += 1
-    
+
+    def get_state(self):
+        return {"n": self.n}
+    def set_state(self, state):
+        self.n = state["n"]
+
     def _reallocate(self) -> bool:
         """
             Boolean valued function to determine if the adapters should be reallocated.
@@ -46,6 +51,14 @@ class OnceSchedule(BaseSchedule):
     def _reallocate(self) -> bool:
         return self.n == self.after_step
 
+    def get_state(self):
+        state = super().get_state()
+        state["after_step"] = self.after_step
+        return state
+    def set_state(self, state):
+        super().set_state(state)
+        self.after_step = state["after_step"]
+
 class PeriodicSchedule(BaseSchedule):
     """
         Schedule that reallocate the adapters every n steps.
@@ -57,3 +70,11 @@ class PeriodicSchedule(BaseSchedule):
 
     def _reallocate(self) -> bool:
         return self.n % self.period == 0
+    
+    def get_state(self):
+        state = super().get_state()
+        state["period"] = self.period
+        return state
+    def set_state(self, state):
+        super().set_state(state)
+        self.period = state["period"]
