@@ -149,7 +149,7 @@ class ScaledMultinomialAllocator(BaseAllocator):
         counter = torch.tensor(
             [mod.counter for mod in self.named_adapter_modules.values()],
             requires_grad=False)
-        weights = acts / acts.sum() * 1/(counter+1e-6)
+        weights = acts / acts.sum() * 1/(counter+1e-2)
 
         mask = torch.zeros_like(weights)
         mask[torch.multinomial(weights, self.k, replacement=True)] = 1
