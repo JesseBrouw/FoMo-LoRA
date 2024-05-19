@@ -152,7 +152,7 @@ class ScaledMultinomialAllocator(BaseAllocator):
         weights = acts / acts.sum() * 1/(counter+1e-2)
 
         mask = torch.zeros_like(weights)
-        mask[torch.multinomial(weights, self.k, replacement=True)] = 1
+        mask[torch.multinomial(weights, self.k, replacement=False)] = 1
         # log (sorry if I make stuff break but its good to see how the scaling works)
         self._make_json_log({"acts": acts.tolist(), "weights": weights.tolist()}, mask.tolist())
         return mask
