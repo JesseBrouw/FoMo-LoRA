@@ -3,17 +3,17 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 
-#SBATCH --job-name=HyperparamSearchLR
+#SBATCH --job-name=DYNALORAHPARAMS
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:59:00
 #SBATCH --mem=60000M
-#SBATCH --array=1-12%1
-#SBATCH --output=/home/{username}/FoMo-LoRA/%A.out
+#SBATCH --array=1-6%1
+#SBATCH --output=/home/mkrastev/FoMo-LoRA/%A.out
 
 date
 
-export HF_DATASETS_CACHE=/scratch-local/{username}/hf_cache_dir
+export HF_DATASETS_CACHE=/scratch-local/${whoami}/hf_cache_dir
 
 WORK_DIR=$HOME/FoMo-LoRA
 cd $WORK_DIR
@@ -23,7 +23,7 @@ JOB_FILE=$WORK_DIR/scripts/hyperparam_search.job
 HPARAMS_FILE=$WORK_DIR/scripts/array_job_hyperparameters.txt
 CHECKPOINTDIR=$WORK_DIR/logs/checkpoints/array_job_${SLURM_ARRAY_JOB_ID}
 
-mkdir $CHECKPOINTDIR
+mkdir -p $CHECKPOINTDIR
 rsync $HPARAMS_FILE $CHECKPOINTDIR/
 rsync $JOB_FILE $CHECKPOINTDIR/
 
@@ -31,10 +31,18 @@ module load 2023
 module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
 source $WORK_DIR/.venv/bin/activate
 
+# --schedule_type no_schedule, once;n, periodic;n.
+# --allocator_type ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>']
+# --aggregate_type l1, l2
+
+
+seed=42
+
 TOKENIZERS_PARALLELISM=false python -m src.train \
-                                    --lora dynalora --schedule_type "periodic;100" \
-                                    --allocator_type "multinomial;10" --aggregate_type='l2' \
-                                    --output_dir $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
                                     --task cola --epochs 60 --batch_size 64 --lora_alpha 8 \
-                                    --lora_r 8 --bf16 \
-                                    $(head -$SLURM_ARRAY_TASK_ID $HPARAMS_FILE | tail -1)
+                                    --lora_r 8 --bf16 --seed $seed \
+                                    --lora dynalora \
+                                    --output_dir $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
+                                    $(awk NR==$SLURM_ARRAY_TASK_ID $HPARAMS_FILE)
+
+        

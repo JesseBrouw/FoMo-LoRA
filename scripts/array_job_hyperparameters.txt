@@ -1,12 +1,6 @@
---learning_rate 5e-5 --seed 42
---learning_rate 1e-4 --seed 42
---learning_rate 4e-4 --seed 42
---learning_rate 5e-4 --seed 42
---learning_rate 6e-4 --seed 42
---learning_rate 1e-3 --seed 42
---learning_rate 5e-5 --seed 43
---learning_rate 1e-4 --seed 43
---learning_rate 4e-4 --seed 43
---learning_rate 5e-4 --seed 43
---learning_rate 6e-4 --seed 43
---learning_rate 1e-3 --seed 43
+--allocator_type topk;1 --aggregate_type l2 --schedule_type periodic;100
+--allocator_type topk;10 --aggregate_type l2 --schedule_type periodic;100
+--allocator_type topk;30 --aggregate_type l2 --schedule_type periodic;100
+--allocator_type scaled_multinomial;1 --aggregate_type l2 --schedule_type periodic;100
+--allocator_type scaled_multinomial;10 --aggregate_type l2 --schedule_type periodic;100
+--allocator_type scaled_multinomial;30 --aggregate_type l2 --schedule_type periodic;100
