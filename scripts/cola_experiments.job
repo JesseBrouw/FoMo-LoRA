@@ -46,13 +46,14 @@ batch_size=32
 epochs=80
 learning_rate=4e-04
 warmup_ratio=0.06
+target_modules=all-linear
 
 export SLURM_EARL_VERBOSE_PATH=$EARLDIR
 
 TOKENIZERS_PARALLELISM=false python -m src.train \
                                     --task $task --epochs $epochs --batch_size $batch_size --learning_rate $learning_rate --warmup_ratio=$warmup_ratio\
                                     --lora_alpha 8 --lora_r 8 --bf16 --seed $seed \
-                                    --lora dynalora \
+                                    --lora dynalora --target_modules $target_modules\
                                     --output_dir $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
                                     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)
 
