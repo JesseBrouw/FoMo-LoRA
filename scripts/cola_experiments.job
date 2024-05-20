@@ -19,9 +19,6 @@
 
 date
 
-ln /scratch-shared/fomo-lora/cola_%A_%a.out $HOME/FoMo-LoRA/logs/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out
-ln /scratch-shared/fomo-lora/cola_%A_%a.err $HOME/FoMo-LoRA/logs/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.err
-
 export HF_DATASETS_CACHE=/scratch-local/${whoami}/hf_cache_dir
 
 WORK_DIR=$HOME/FoMo-LoRA
