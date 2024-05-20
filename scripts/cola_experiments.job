@@ -8,14 +8,19 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:59:00
 #SBATCH --mem=60000M
-#SBATCH --array=1-18%1
-#SBATCH --output=/home/${whoami}/FoMo-LoRA/%A.out
+#SBATCH --array=1-18%8
+#SBATCH --output=/scratch-shared/fomo-lora/cola_%A_%a.out
+#SBATCH --error=/scratch-shared/fomo-lora/cola_%A_%a.err
+
 
 #SBATCH --ear=on
 #SBATCH --ear-policy=monitoring
 #SBATCH --ear-verbose=1
 
 date
+
+ln /scratch-shared/fomo-lora/cola_%A_%a.out $HOME/FoMo-LoRA/logs/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out
+ln /scratch-shared/fomo-lora/cola_%A_%a.err $HOME/FoMo-LoRA/logs/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.err
 
 export HF_DATASETS_CACHE=/scratch-local/${whoami}/hf_cache_dir
 
