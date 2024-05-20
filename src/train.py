@@ -202,12 +202,6 @@ def main():
             model.set_output_dir(hf_args.output_dir)
         case "dinalora":
             if lora_config.task_type==TaskType.SEQ_CLS:
-                # this is needed because otherwise peft won't save the classifier weights to the checkpoints
-                # this mechanism is implemented in PeftModelForSequenceClassification class which is a subclass of PeftModel,
-                # but the PeftModel.__init__() cannot be called from the PeftModelWrapper because there are some stuffs 
-                # which are not compatible with DynaLoraModel (Miki feel free to detail which are those).
-                # Instead the stuffs needed from PeftModel are implemented in PeftModelWrapper. 
-                lora_config.modules_to_save = ["classifier", "score"]
                 model = PeftModelWrapper(
                     peft_model=DinaLoraModel(model, lora_config),
                     peft_config=lora_config
