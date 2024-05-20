@@ -70,7 +70,7 @@ class TopKAllocator(BaseAllocator):
         super().__init__(k)
 
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
+        if not hasattr(self, "named_adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
         values = [mod.cum_acts for mod in self.named_adapter_modules.values()]
         values = torch.tensor(values)
@@ -96,7 +96,7 @@ class ThresholdAllocator(BaseAllocator):
         self.threshold = threshold
 
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
+        if not hasattr(self, "named_adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
         values = [mod.cum_acts for mod in self.named_adapter_modules.values()]
         values, indices = torch.sort(torch.tensor(values), descending=True)
@@ -119,7 +119,7 @@ class MultinomialAllocator(BaseAllocator):
         super().__init__(k) # here k is the number of elements to sample
     
     def _compute_mask(self) -> torch.Tensor:
-        if not hasattr(self, "adapter_modules") or self.named_adapter_modules is None:
+        if not hasattr(self, "named_adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
         values = [mod.cum_acts for mod in self.named_adapter_modules.values()]
         values = torch.tensor(values, dtype=torch.float)
