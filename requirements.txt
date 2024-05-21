@@ -18,3 +18,8 @@ portalocker
 pytorch-lightning
 scipy
 scikit-learn
+tensorboard
+torch-tb-profiler
+matplotlib
+mplcursors
+mpld3
