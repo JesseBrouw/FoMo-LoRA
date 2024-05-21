@@ -272,22 +272,22 @@ def main():
         def on_step_end(self, args, state, control, **kwargs):
             self.prof.step()
 
-    # with torch.profiler.profile(
-    #     activities=[
-    #         torch.profiler.ProfilerActivity.CPU,
-    #         torch.profiler.ProfilerActivity.CUDA,
-    #     ],
-    #     schedule=torch.profiler.schedule(
-    #         skip_first=3, wait=1, warmup=1, active=4, repeat=6
-    #     ),
-    #     on_trace_ready=torch.profiler.tensorboard_trace_handler(hf_args.output_dir),
-    #     profile_memory=True,
-    #     with_stack=True,
-    #     record_shapes=True,
-    # ) as prof:
-    #     trainer.add_callback(ProfCallback(prof=prof))
-    #     trainer.train()
-    trainer.train()
+    with torch.profiler.profile(
+         activities=[
+             torch.profiler.ProfilerActivity.CPU,
+             torch.profiler.ProfilerActivity.CUDA,
+         ],
+         schedule=torch.profiler.schedule(
+             skip_first=3, wait=1, warmup=1, active=4, repeat=6
+         ),
+         on_trace_ready=torch.profiler.tensorboard_trace_handler(hf_args.output_dir),
+         profile_memory=True,
+         with_stack=True,
+         record_shapes=True,
+     ) as prof:
+         trainer.add_callback(ProfCallback(prof=prof))
+         trainer.train()
+    #trainer.train()
     print(f"Training took {time.time() - tick:.1f}s")
     
     trainer.save_model(hf_args.output_dir)
