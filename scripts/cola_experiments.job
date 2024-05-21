@@ -28,7 +28,7 @@ cd $WORK_DIR
 JOB_FILE=$WORK_DIR/scripts/cola_experiments.job
 ARRAY_FILE=$WORK_DIR/scripts/array_job_cola_experiments.txt
 CHECKPOINTDIR=$WORK_DIR/logs/checkpoints/array_job_${SLURM_ARRAY_JOB_ID}
-EARLDIR=$WORK_DIR/logs/earl/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+EARLDIR=$WORK_DIR/logs/earl/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 
 mkdir -p $CHECKPOINTDIR
 mkdir -p $EARLDIR
@@ -50,7 +50,8 @@ target_modules=all-linear
 
 export SLURM_EARL_VERBOSE_PATH=$EARLDIR
 
-TOKENIZERS_PARALLELISM=false python -m src.train \
+# srun is necessary for earl logs: https://servicedesk.surf.nl/wiki/pages/viewpage.action?pageId=62226671
+srun env TOKENIZERS_PARALLELISM=false python -m src.train \
                                     --task $task --epochs $epochs --batch_size $batch_size --learning_rate $learning_rate --warmup_ratio=$warmup_ratio\
                                     --lora_alpha 8 --lora_r 8 --bf16 --seed $seed \
                                     --lora dynalora --target_modules $target_modules\
