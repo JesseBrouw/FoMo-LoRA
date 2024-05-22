@@ -1,6 +1,6 @@
 # TODO: schedule classes to abstract the reallocation logic
 from abc import ABC
-
+from math import log2
 
 class BaseSchedule(ABC):
     """
@@ -78,3 +78,18 @@ class PeriodicSchedule(BaseSchedule):
     def set_state(self, state):
         super().set_state(state)
         self.period = state["period"]
+
+class LogarithmicSchedule(BaseSchedule):
+    """
+        Schedule that reallocate the adapters based on
+        ceil(c*log(n)) where c is a constant.
+    """
+
+    def __init__(self, scale: float = 10.0, n: int=0):
+        super().__init__(n)
+        self.scale = scale
+
+    def _reallocate(self) -> bool:
+        return (self.n + round(
+            self.scale * log2(self.n))) == 0
+
