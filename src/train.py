@@ -252,6 +252,9 @@ def main():
             num_warmup_steps=(hf_args.warmup_steps if hf_args.warmup_steps > 0 else \
                               hf_args.num_train_epochs * len(encoded_dataset["train"]) * hf_args.warmup_ratio),
         )
+        
+    # initialize the modules
+    getattr(model, "init_modules", lambda: None)()
 
     trainer = Trainer(
         model,
@@ -287,10 +290,9 @@ def main():
      ) as prof:
          trainer.add_callback(ProfCallback(prof=prof))
          trainer.train()
-    #trainer.train()
+    # trainer.train()
     print(f"Training took {time.time() - tick:.1f}s")
-    
-    trainer.save_model(hf_args.output_dir)
+    trainer.save_model(os.path.join(hf_args.output_dir, 'final_model'))
 
 
 if __name__ == "__main__":

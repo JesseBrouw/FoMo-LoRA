@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 from abc import ABC, abstractmethod
 import torch
 import json
+import logging
 
 class BaseAllocator(ABC):
     """
@@ -26,6 +27,11 @@ class BaseAllocator(ABC):
 
     def set_adapter_modules(self, adapter_modules: Dict[str, Any]):
         self.named_adapter_modules = adapter_modules
+        if len(adapter_modules) > self.k:
+            logging.warning(
+                f"Number of adapter modules ({len(adapter_modules)}) is less than k ({self.k})."\
+                    "Setting k to the number of modules.")
+            self.k = len(adapter_modules)
     def set_output_path(self, output_path: str):
         self.output_path = output_path
 

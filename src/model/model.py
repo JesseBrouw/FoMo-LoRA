@@ -128,6 +128,10 @@ class DynaLoraMixin(BaseMixin):
     """
     dispatchers = (dispatch_dynamic,)
     applicable_modules = (DynaLoraLayer,)
+    def init_modules(self):
+        # do not initialize the modules here
+        # as there are no gradients yet
+        pass
 
 class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
@@ -172,8 +176,12 @@ class DinaLoraModel(LoraModel, DinaLoraMixin):
         DinaLoraMixin.__init__(self, adapter_name, peft_config)
 
     def __call__(self, *args, **kwargs):
-        # first, see if reallocation is due
-        DinaLoraMixin.__call__(self, *args, **kwargs)
+        # first, see if reallocation is due, but only if there was
+        # already a forward pass
+        if self.schedule.n < 1:
+            self.schedule.step()
+        else:
+            DinaLoraMixin.__call__(self, *args, **kwargs)
         # then, perform the forward pass
         return super().__call__(*args, **kwargs)
 
