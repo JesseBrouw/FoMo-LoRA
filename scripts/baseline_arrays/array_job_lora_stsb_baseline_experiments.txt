@@ -1,0 +1,3 @@
+--seed 41 --lora lora --task stsb --batch_size 16 --epochs 40 --learning_rate 4e-4 --lora_r 8 --lora_alpha 8 --max_seq_length 512 --optim adamw-torch --warmup_ratio 0.06 --lr_schedule linear_with_warmup
+--seed 42 --lora lora --task stsb --batch_size 16 --epochs 40 --learning_rate 4e-4 --lora_r 8 --lora_alpha 8 --max_seq_length 512 --optim adamw-torch --warmup_ratio 0.06 --lr_schedule linear_with_warmup
+--seed 43 --lora lora --task stsb --batch_size 16 --epochs 40 --learning_rate 4e-4 --lora_r 8 --lora_alpha 8 --max_seq_length 512 --optim adamw-torch --warmup_ratio 0.06 --lr_schedule linear_with_warmup
