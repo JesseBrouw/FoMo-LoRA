@@ -128,10 +128,6 @@ class DynaLoraMixin(BaseMixin):
     """
     dispatchers = (dispatch_dynamic,)
     applicable_modules = (DynaLoraLayer,)
-    def init_modules(self):
-        # do not initialize the modules here
-        # as there are no gradients yet
-        pass
 
 class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
@@ -174,6 +170,11 @@ class DinaLoraModel(LoraModel, DinaLoraMixin):
                  adapter_name: str = 'default') -> None:
         LoraModel.__init__(self, model, peft_config, adapter_name)
         DinaLoraMixin.__init__(self, adapter_name, peft_config)
+
+    def init_modules(self):
+        # do not initialize the modules here
+        # as there are no gradients yet
+        pass
 
     def __call__(self, *args, **kwargs):
         # first, see if reallocation is due, but only if there was
