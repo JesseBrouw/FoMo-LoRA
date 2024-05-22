@@ -100,7 +100,7 @@ def get_config(
                 task_type=task_type,
                 r=r,
                 vera_dropout=dropout,
-                d_initial=vera_d_initial
+                d_initial=vera_d_initial,
                 target_modules=target_modules,
                 modules_to_save=modules_to_save
             )
