@@ -33,7 +33,7 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
         self._make_optimizers()
 
     def optimizer_hook(self, param):
-        curr_param = param.clone().detach()
+        #curr_param = param.clone().detach()
         # logger.debug(f"  optimizer:\n  param_name  %s param_changed %s  has_grad: %s",
         #              self.param_to_name[param], not curr_param.to('cpu').eq(self.param_cache[param]).all().item(), param.grad is not None)
         if param.grad is not None:
