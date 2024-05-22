@@ -1,6 +1,5 @@
 # TODO: schedule classes to abstract the reallocation logic
 from abc import ABC
-import torch
 from math import log2
 
 class BaseSchedule(ABC):
@@ -91,6 +90,6 @@ class LogarithmicSchedule(BaseSchedule):
         self.scale = scale
 
     def _reallocate(self) -> bool:
-        return (self.n % 1 + round(
+        return (self.n + round(
             self.scale * log2(self.n))) == 0
 
