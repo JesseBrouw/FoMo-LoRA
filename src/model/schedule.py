@@ -1,6 +1,6 @@
 # TODO: schedule classes to abstract the reallocation logic
 from abc import ABC
-
+import torch
 
 class BaseSchedule(ABC):
     """
@@ -78,3 +78,19 @@ class PeriodicSchedule(BaseSchedule):
     def set_state(self, state):
         super().set_state(state)
         self.period = state["period"]
+
+class LogarithmicSchedule(BaseSchedule):
+    """
+        Schedule that reallocate the adapters based on
+        ceil(c*log(n)) where c is a constant.
+    """
+
+    def __init__(self, scale: float = 10.0, n: int=0):
+        super().__init__(0)
+        self.scale = torch.tensor(scale, requires_grad=False)
+
+    def _reallocate(self) -> bool:
+        return self.n // 1 + torch.round(
+            self.scale * torch.log2(torch.tensor(self.n, dtype=torch.float32))
+        ) == 0
+

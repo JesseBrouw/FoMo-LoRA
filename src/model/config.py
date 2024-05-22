@@ -1,6 +1,6 @@
 from peft import LoraConfig
 from dataclasses import dataclass, field
-from .schedule import BaseSchedule, OnceSchedule, PeriodicSchedule
+from .schedule import BaseSchedule, OnceSchedule, PeriodicSchedule, LogarithmicSchedule
 from .allocator import (BaseAllocator,
                         TopKAllocator,
                         ThresholdAllocator,
@@ -25,7 +25,7 @@ class DynaLoraConfig(LoraConfig):
     """
     schedule_type: str = field(
         default='no_schedule',
-        metadata={'help': ("The schedule type that will determine how often the adapters are updated. By default, only once in the beginning. Choices: ['no_schedule', 'once;<after_step>', 'periodic;<interval>']")})
+        metadata={'help': ("The schedule type that will determine how often the adapters are updated. By default, only once in the beginning. Choices: ['no_schedule', 'once;<after_step>', 'periodic;<interval>', 'logarithmic;<scale>']")})
     allocator_type: str = field(default='topk;1', metadata={'help': ("The allocator type that will determine how to select the active modules. Choices: ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>']")})
     aggregate_type: Literal['l2', 'l1'] = field(default='l2', 
                                                 metadata={'help': ("The type of aggregation to use for the cumulative activations. Choices: ['l2', 'l1']")})
@@ -52,6 +52,8 @@ class DynaLoraConfig(LoraConfig):
             return OnceSchedule(after_step=int(args[0]))
         elif schedule == 'periodic':
             return PeriodicSchedule(period=int(args[0]))
+        elif schedule == 'logarithmic':
+            return LogarithmicSchedule(scale=float(args[0]))
         else:
             warnings.warn('Invalid schedule type. Using no_schedule as default.')
             return BaseSchedule()
