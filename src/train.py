@@ -88,6 +88,7 @@ def get_config(
     allocator_type=None,
     aggregate_type=None,
     task_type=TaskType.SEQ_CLS,
+    vera_d_initial=0.1,
 ):
     # find target modules
     target_modules = maybe_select_all_linear(model, target_modules)
@@ -99,6 +100,7 @@ def get_config(
                 task_type=task_type,
                 r=r,
                 vera_dropout=dropout,
+                d_initial=vera_d_initial
                 target_modules=target_modules,
                 modules_to_save=modules_to_save
             )
@@ -188,6 +190,7 @@ def main():
         schedule_type=args.schedule_type,
         allocator_type=args.allocator_type,
         aggregate_type=args.aggregate_type,
+        vera_d_initial=args.vera_d_initial,
     )
     match args.lora:
         case "dynalora":
