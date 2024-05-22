@@ -11,7 +11,6 @@ from transformers import TrainingArguments
 import logging
 logger = logging.getLogger('layerwise_optimizer')
 logger.setLevel(logging.INFO)
-# logger.addHandler(logging.FileHandler('optim_log.log'))
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
@@ -29,13 +28,9 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
         self.model = model
         self.config = config
         self.optimizer_dict = {}
-        self.param_cache = {}
         self._make_optimizers()
 
     def optimizer_hook(self, param):
-        #curr_param = param.clone().detach()
-        # logger.debug(f"  optimizer:\n  param_name  %s param_changed %s  has_grad: %s",
-        #              self.param_to_name[param], not curr_param.to('cpu').eq(self.param_cache[param]).all().item(), param.grad is not None)
         if param.grad is not None:
             self.optimizer_dict[param].step()
             self.optimizer_dict[param].zero_grad()
@@ -76,7 +71,6 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
         for param in self.model.parameters():
             if param.requires_grad:
                 param.register_post_accumulate_grad_hook(self.optimizer_hook)
-                self.param_cache[param] = param.clone().detach()
 
     def load_state_dict(self, state_dict: Dict[str, Any]):
         for param, optimizer in self.optimizer_dict.items():
