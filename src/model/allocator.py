@@ -27,7 +27,7 @@ class BaseAllocator(ABC):
 
     def set_adapter_modules(self, adapter_modules: Dict[str, Any]):
         self.named_adapter_modules = adapter_modules
-        if len(adapter_modules) > self.k:
+        if len(adapter_modules) < self.k:
             logging.warning(
                 f"Number of adapter modules ({len(adapter_modules)}) is less than k ({self.k})."\
                     "Setting k to the number of modules.")
