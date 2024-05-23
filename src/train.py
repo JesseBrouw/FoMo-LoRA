@@ -260,7 +260,9 @@ def main():
     # initialize the modules
     getattr(model, "init_modules", lambda: None)()
 
-    observer = ActivationObserver(model)
+    observer = None
+    if args.check_activations:
+        observer = ActivationObserver(model)
 
     trainer = Trainer(
         model,
@@ -299,7 +301,8 @@ def main():
     # trainer.train()
     print(f"Training took {time.time() - tick:.1f}s")
     trainer.save_model(os.path.join(hf_args.output_dir, 'final_model'))
-    observer.save_state(os.path.join(hf_args.output_dir, 'activation_observer.pth'))
+    if observer is not None:
+        observer.save_state(os.path.join(hf_args.output_dir, 'activation_observer.pth'))
 
 
 if __name__ == "__main__":

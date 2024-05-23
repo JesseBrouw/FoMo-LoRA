@@ -69,3 +69,7 @@ class ModelArguments:
         default=0.1,
         metadata={"help": "The value of d for VERA."}
     ) # default and we don't need to touch it. Adding for completeness
+    check_activations: bool = dataclasses.field(
+        default=False,
+        metadata={"help": "Whether to check activations."}
+    )
