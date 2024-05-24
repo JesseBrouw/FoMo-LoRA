@@ -253,7 +253,7 @@ class Linear(LoraLinear, DynaLoraLayer):
         #print("result: ", result)  
         aggregated = self.aggregator(result.detach())
         #print("Aggregated: ", aggregated)
-        self._cum_acts = self._cum_acts + aggregated
+        self._cum_acts = self._cum_acts + aggregated.to(self._cum_acts.device)
         return result
 
 def dispatch_dynamic(
