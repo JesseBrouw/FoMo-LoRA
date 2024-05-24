@@ -165,3 +165,4 @@ checkpoint-*
 #  ignores the .vscode directory
 .vscode
 *.DS_Store
+output/

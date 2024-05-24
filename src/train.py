@@ -296,6 +296,7 @@ def main():
     # trainer.train()
     print(f"Training took {time.time() - tick:.1f}s")
     trainer.save_model(os.path.join(hf_args.output_dir, 'final_model'))
+    trainer.evaluate(encoded_dataset["test"])
 
 
 if __name__ == "__main__":

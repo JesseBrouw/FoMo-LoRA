@@ -20,7 +20,8 @@ class GradientHook:
 
     def backward_hook(self, grad_output):
         """Should store the gradient output (no idea yet if it should be mean or sth else)."""
-        self.grad_output = grad_output[0].mean()  # Assuming single output
+        # NOTE: If you would rather reduce the memory requirements, you can store the mean of the gradient output (i.e. a scalar value) instead of the whole tensor.
+        self.grad_output = grad_output[0]  # Assuming single output
 
     def remove(self):
         self.hook.remove()
@@ -34,7 +35,7 @@ class DinaLoraLayer(LoraLayer):
             raise ValueError("peft_config is required.")
         # counter to keep track of the number of forward passes.
         # Used by the allocator and we can also log it.
-        self._counter = torch.tensor(0, requires_grad=False)
+        self._counter = 0
         self._is_active = True
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
@@ -61,7 +62,7 @@ class DinaLoraLayer(LoraLayer):
                     param.grad_hook.remove()
 
     def reset_cum_acts(self):
-        self._cum_acts = torch.tensor(0.0, requires_grad=False)
+        self._cum_acts = torch.tensor(1e-6, requires_grad=False)
     @property
     def cum_acts(self):
         return self._cum_acts
@@ -84,10 +85,10 @@ class DinaLinear(LoraLinear, DinaLoraLayer):
         DinaLoraLayer.__init__(self, *args, **kwargs)
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
-        if self._is_active:
-            # increment the counter only if
-            # the layer is active
-            self._counter += 1
+        # if self._is_active:
+        #     # increment the counter only if
+        #     # the layer is active
+        #     self._counter += 1
         # copy-paste from LoraLinear
         self._check_forward_args(x, *args, **kwargs)
         adapter_names = kwargs.pop("adapter_names", None)
@@ -121,6 +122,7 @@ class DinaLinear(LoraLinear, DinaLoraLayer):
                     grad_hook = getattr(lora_A.weight, "grad_hook", None)
                     if grad_hook is not None and grad_hook.grad_output is not None:
                         self._cum_acts = self._cum_acts + self.aggregator(grad_hook.grad_output.detach())
+                        self._counter += self._is_active
                 else:
                     x = dropout(x)
                     result = result + \
