@@ -10,7 +10,7 @@ from transformers.optimization import (
 from transformers import TrainingArguments
 import logging
 logger = logging.getLogger('layerwise_optimizer')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
@@ -25,15 +25,21 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
                  model: torch.nn.Module,
                  config: TrainingArguments) -> None:
         super().__init__([])
+        print('optimizer init')
         self.model = model
         self.config = config
         self.optimizer_dict = {}
+        self.mags = {}
         self._make_optimizers()
 
     def optimizer_hook(self, param):
         if param.grad is not None:
+            mag = torch.norm(param.grad, p=2)
+            self.mags[self.param_to_name[param]].append(mag.item())
             self.optimizer_dict[param].step()
             self.optimizer_dict[param].zero_grad()
+        else:
+            self.mags[self.param_to_name[param]].append('nan')
 
     def _make_optimizers(self):
         """
@@ -43,6 +49,7 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             and register post_accumulate_gradient_hooks, which will handle the
             gradient updates on a per-layer basis.
         """
+        print('make optimizers')
         # get the optimizer class based on the configuration
         optim_cls = SUPPORTED_OPTIMIZERS[self.config.optim.lower()]
         logger.info(f"Using optimizer {optim_cls} for layer-wise optimization")
@@ -71,6 +78,9 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
         for param in self.model.parameters():
             if param.requires_grad:
                 param.register_post_accumulate_grad_hook(self.optimizer_hook)
+        print(f"Created {len(self.optimizer_dict)} layer-wise optimizers")
+        for name in self.optimizer_dict.keys():
+            self.mags[self.param_to_name[name]] = []
 
     def load_state_dict(self, state_dict: Dict[str, Any]):
         for param, optimizer in self.optimizer_dict.items():
@@ -81,6 +91,9 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             self.param_to_name[param]: optimizer.state_dict()
             for param, optimizer in self.optimizer_dict.items()
         }
+
+    def get_mags(self):
+        return self.mags
 
 class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
     """

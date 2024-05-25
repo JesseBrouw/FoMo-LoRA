@@ -256,7 +256,7 @@ def main():
             num_warmup_steps=(hf_args.warmup_steps if hf_args.warmup_steps > 0 else \
                               hf_args.num_train_epochs * len(encoded_dataset["train"]) * hf_args.warmup_ratio),
         )
-        
+
     # initialize the modules
     getattr(model, "init_modules", lambda: None)()
 
@@ -289,7 +289,7 @@ def main():
              torch.profiler.ProfilerActivity.CUDA,
          ],
          schedule=torch.profiler.schedule(
-             skip_first=3, wait=1, warmup=1, active=4, repeat=6
+             skip_first=3, wait=1, warmup=1, active=4, repeat=1
          ),
          on_trace_ready=torch.profiler.tensorboard_trace_handler(hf_args.output_dir),
          profile_memory=True,
@@ -303,6 +303,9 @@ def main():
     trainer.save_model(os.path.join(hf_args.output_dir, 'final_model'))
     if observer is not None:
         observer.save_state(os.path.join(hf_args.output_dir, 'activation_observer.pth'))
+    if optimizer_arg[0] is not None and hasattr(optimizer_arg[0], "get_mags"):
+        mags = optimizer_arg[0].get_mags()
+        torch.save(mags, os.path.join(hf_args.output_dir, 'mags.pth'))
 
 
 if __name__ == "__main__":
