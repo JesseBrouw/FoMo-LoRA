@@ -102,10 +102,6 @@ class BaseMixin(AbstractMixin):
         """
         Reassigns the active modules to the model
         """
-        if not isinstance(self, LoraModel) or not hasattr(self, "model"):
-            raise ValueError(
-                "This method is only supported for LoraModel instances, for now."
-            )
         # Reassign the active modules
         # and make a log entry
         self.allocator()

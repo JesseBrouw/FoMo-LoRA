@@ -74,3 +74,17 @@ class PeftModelWrapper(PeftModel, Module):
         for adapter_name, adapter in dynalora_model.named_adapter_modules.items():
             if adapter_name in states['adapter_modules']:
                 adapter.set_state(states['adapter_modules'][adapter_name])
+
+    def forward(self, *args: Any, **kwds: Any) -> Any:
+        base_model = self.get_base_model()
+        realloc = self.training and \
+            base_model.schedule.reallocate if isinstance(base_model, DynaBaseMixin) else False
+        step = base_model.schedule.n if isinstance(base_model, DynaBaseMixin) else None
+
+        output = super().forward(*args, **kwds)
+
+        if realloc:
+            print(f'step {step}: reallocated modules.')
+            self.print_trainable_parameters()
+
+        return output

@@ -343,13 +343,14 @@ def dispatch_dynamic_vera(
     vera_B = kwargs.pop("vera_B", None)
     if not vera_A or not vera_B:
         raise ValueError("vera_A and vera_B are required for VeraLinear.")
-    new_module = VeraLinear(
+    new_module = DynaVeraLinear(
         target,
         vera_A,
         vera_B,
         adapter_name,
         bias=bias,
         d_initial=lora_config.d_initial,
+        peft_config=lora_config,
         **kwargs,
     )
 
