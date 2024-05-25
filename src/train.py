@@ -15,8 +15,8 @@ from transformers import (
     TrainingArguments,
     TrainerCallback,
 )
-from .model.config import DynaLoraConfig
-from .model.model import DinaLoraModel, DynaLoraModel
+from .model.config import DynaLoraConfig, DynaVeraConfig
+from .model.model import DinaLoraModel, DynaLoraModel, DynaVeraModel
 from .model.optimizer import (
     create_layerwise_optimizer_and_scheduler,
     SUPPORTED_OPTIMIZERS
@@ -130,6 +130,19 @@ def get_config(
                 aggregate_type=aggregate_type,
                 modules_to_save=modules_to_save
             )
+        case "dynavera":
+            peft_config = DynaVeraConfig(
+                task_type=task_type,
+                inference_mode=False,
+                r=r,
+                vera_dropout=dropout,
+                d_initial=vera_d_initial,
+                target_modules=target_modules,
+                schedule_type=schedule_type,
+                allocator_type=allocator_type,
+                aggregate_type=aggregate_type,
+                modules_to_save=modules_to_save
+            )
 
         case _:
             peft_config = LoraConfig(
@@ -211,6 +224,15 @@ def main():
                 )
             else:
                 print("Task type not supported for DinaLora. Only Sequence classification is supported yet.")
+                exit(1)
+        case "dynavera":
+            if lora_config.task_type==TaskType.SEQ_CLS:
+                model = PeftModelWrapper(
+                    peft_model=DynaVeraModel(model, lora_config),
+                    peft_config=lora_config
+                )
+            else:
+                print("Task type not supported for DynaVera. Only Sequence classification is supported yet.")
                 exit(1)
         case _:
             model = get_peft_model(model, lora_config)
