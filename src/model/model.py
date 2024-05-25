@@ -1,11 +1,14 @@
-from peft import LoraModel
+from peft import LoraModel, VeraModel
 from peft.config import PeftConfig
 from typing import Any, Callable, Union, List, Tuple, Dict
 from transformers import PreTrainedModel, RobertaForSequenceClassification
 
-from .layer import DynaLoraLayer, Linear as DynaLoraLinear, dispatch_dynamic
-from .layer import DinaLoraLayer, DinaLinear as DinaLoraLinear, dispatch_dynamic_dina
-from .config import DynaLoraConfig
+from .layer import (
+    DynaLayerMixin, 
+    DinaLoraLayer, DinaLoraLinear, dispatch_dynamic_dina,
+    DynaLoraLinear, dispatch_dynamic,
+    DynaVeraLinear, dispatch_dynamic_vera)
+from .config import DynaLoraConfig, DynaVeraConfig
 
 import os
 import json
@@ -127,7 +130,7 @@ class DynaLoraMixin(BaseMixin):
         it overrides the _create_new_module function of BasePeftModel
     """
     dispatchers = (dispatch_dynamic,)
-    applicable_modules = (DynaLoraLayer,)
+    applicable_modules = (DynaLayerMixin,)
 
 class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,
@@ -149,8 +152,6 @@ class DynaLoraModel(LoraModel, DynaLoraMixin):
     def _create_new_module(lora_config, adapter_name, target, **kwargs):
         return DynaLoraMixin._create_new_module(lora_config, adapter_name, target, **kwargs)
 
-
-
 ## DinaLoRA
 class DinaLoraMixin(BaseMixin):
     """
@@ -161,7 +162,6 @@ class DinaLoraMixin(BaseMixin):
     """
     dispatchers = (dispatch_dynamic_dina,)
     applicable_modules = (DinaLoraLayer,)
-
 
 class DinaLoraModel(LoraModel, DinaLoraMixin):
     def __init__(self,
@@ -189,3 +189,39 @@ class DinaLoraModel(LoraModel, DinaLoraMixin):
     @staticmethod
     def _create_new_module(lora_config, adapter_name, target, **kwargs):
         return DinaLoraMixin._create_new_module(lora_config, adapter_name, target, **kwargs)
+
+## DynaVera
+class DynaVeraMixin(BaseMixin):
+    """
+        Mixin class to account for injecting DinaLoraLayers 
+        and keeping track of their cumulative activations., 
+        
+        it overrides the _create_new_module function of BasePeftModel
+    """
+    dispatchers = (dispatch_dynamic_vera,)
+    applicable_modules = (DynaLayerMixin,)
+
+class DynaVeraModel(VeraModel, DynaVeraMixin):
+    def __init__(self,
+                 model: PreTrainedModel,
+                 peft_config: PeftConfig,
+                 adapter_name: str = 'default') -> None:
+        VeraModel.__init__(self, model, peft_config, adapter_name)
+        DynaVeraMixin.__init__(self, adapter_name, peft_config)
+
+    def __call__(self, *args, **kwargs):
+        # first, see if reallocation is due
+        # only if in training mode
+        if self.model.training:
+            DynaVeraMixin.__call__(self, *args, **kwargs)
+        # then, perform the forward pass
+        return super().__call__(*args, **kwargs)
+
+    @staticmethod
+    def _create_new_module(lora_config, vera_A, vera_B, adapter_name, target, **kwargs):
+        return DynaVeraMixin._create_new_module(lora_config,
+                                                adapter_name,
+                                                target,
+                                                vera_A=vera_A,
+                                                vera_B=vera_B,
+                                                **kwargs)

@@ -2,14 +2,15 @@ import functools
 import torch
 import warnings
 from typing import Optional
-from peft import LoraConfig
+from peft import LoraConfig, VeraConfig
 from peft import PeftConfig
 from peft.tuners.tuners_utils import BaseTunerLayer
 from peft.tuners.lora.layer import (LoraLayer,
                                     Linear as LoraLinear,
                                     Conv2d as LoraConv2d,
                                     Embedding as LoraEmbedding)
-
+from peft.tuners.vera.layer import (VeraLayer,
+                                    Linear as VeraLinear)
 
 class GradientHook:
     def __init__(self, module):
@@ -75,7 +76,7 @@ class DinaLoraLayer(LoraLayer):
         self._cum_acts = state["cum_acts"]
         self._is_active = state["is_active"]
 
-class DinaLinear(LoraLinear, DinaLoraLayer):
+class DinaLoraLinear(LoraLinear, DinaLoraLayer):
     """
         Overrides lora.Linear with the cumulative activations tracking.
     """
@@ -174,7 +175,8 @@ def dispatch_dynamic_dina(
 
     return new_module
 
-class DynaLoraLayer(LoraLayer):
+
+class DynaLayerMixin:
     """
         Dynamic LoRA layer. 
 
@@ -182,9 +184,6 @@ class DynaLoraLayer(LoraLayer):
         of the layer. This can be used to dynamically reallocate the adapters.
     """
     def __init__(self, *args, **kwargs):
-        # loraLayer is typically initialized through another inheritance path
-        # super().__init__(*args, **kwargs)
-        
         # this is needed to put cum_acts on the right device because the addition won't work in forward if they are on different devices
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -235,13 +234,13 @@ class DynaLoraLayer(LoraLayer):
         self._cum_acts = state["cum_acts"]
         self._is_active = state["is_active"]
 
-class Linear(LoraLinear, DynaLoraLayer):
+class DynaLoraLinear(LoraLinear, DynaLayerMixin):
     """
         Overrides lora.Linear with the cumulative activations tracking.
     """
     def __init__(self, *args, **kwargs):
         LoraLinear.__init__(self, *args, **kwargs)
-        DynaLoraLayer.__init__(self, *args, **kwargs)
+        DynaLayerMixin.__init__(self, *args, **kwargs)
 
     def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
         if self._is_active:
@@ -283,7 +282,7 @@ def dispatch_dynamic(
             )
             kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = False
         kwargs.update(lora_config.loftq_config)
-        new_module = Linear(target, adapter_name, peft_config=lora_config, **kwargs)
+        new_module = DynaLoraLinear(target, adapter_name, peft_config=lora_config, **kwargs)
     # elif isinstance(target_base_layer, Conv1D):
     #     if not kwargs["fan_in_fan_out"]:
     #         warnings.warn(
@@ -296,6 +295,60 @@ def dispatch_dynamic(
 
     return new_module
 
+class DynaVeraLinear(VeraLinear, DynaLayerMixin):
+    """
+        Overrides vera.Linear with the cumulative activations tracking.
+    """
+    def __init__(self, *args, **kwargs):
+        VeraLinear.__init__(self, *args, **kwargs)
+        DynaLayerMixin.__init__(self, *args, **kwargs)
 
-# TODO: all the other layer types
+    def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
+        if self._is_active:
+            # increment the counter only if the layer is active
+            self._counter += 1
+        result = super().forward(x, *args, **kwargs)
+        aggregated = self.aggregator(result.detach())
+        self._cum_acts = self._cum_acts + aggregated
+        return result
 
+def dispatch_dynamic_vera(
+        target: torch.nn.Module,
+        adapter_name: str,
+        lora_config: VeraConfig, # TODO: rename to peft_config in all dispachers
+        **kwargs,
+    ) -> Optional[torch.nn.Module]:
+    bias = kwargs.pop("bias", False)
+
+    if isinstance(target, BaseTunerLayer):
+        target_base_layer = target.get_base_layer()
+    else:
+        target_base_layer = target
+
+    if isinstance(target_base_layer, torch.nn.Linear):
+        if kwargs["fan_in_fan_out"]:
+            warnings.warn(
+                "fan_in_fan_out is set to True but the target module is `torch.nn.Linear`. "
+                "Setting fan_in_fan_out to False."
+            )
+            kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = False
+    else:
+        raise ValueError(
+            f"Target module {target} is not supported. Currently, only the following modules are supported: "
+            "`torch.nn.Linear`, `transformers.pytorch_utils.Conv1D`."
+        )
+    vera_A = kwargs.pop("vera_A", None)
+    vera_B = kwargs.pop("vera_B", None)
+    if not vera_A or not vera_B:
+        raise ValueError("vera_A and vera_B are required for VeraLinear.")
+    new_module = VeraLinear(
+        target,
+        vera_A,
+        vera_B,
+        adapter_name,
+        bias=bias,
+        d_initial=lora_config.d_initial,
+        **kwargs,
+    )
+
+    return new_module
