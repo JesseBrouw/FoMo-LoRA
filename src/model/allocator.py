@@ -81,7 +81,7 @@ class RandomAllocator(BaseAllocator):
         if self.k == 0:
             mask = torch.rand(len(self.named_adapter_modules)) < 0.5 # will not ensure k elements
         else:
-            values = torch.tensor([1 for _ in self.named_adapter_modules])
+            values = torch.tensor([1.0 for _ in self.named_adapter_modules])
             mask = torch.multinomial(values, self.k) # will ensure k elements
         # log
         self._make_json_log(values, mask)
