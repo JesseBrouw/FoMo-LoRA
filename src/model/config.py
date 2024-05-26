@@ -2,6 +2,7 @@ from peft import LoraConfig, VeraConfig
 from dataclasses import dataclass, field
 from .schedule import BaseSchedule, OnceSchedule, PeriodicSchedule, LogarithmicSchedule
 from .allocator import (BaseAllocator,
+                        RandomAllocator,
                         TopKAllocator,
                         ThresholdAllocator,
                         MultinomialAllocator,
@@ -59,6 +60,8 @@ class DynaConfigMixin:
             return MultinomialAllocator(k=int(args[0]))
         elif allocator == 'scaled_multinomial':
             return ScaledMultinomialAllocator(k=int(args[0]))
+        elif allocator == 'random':
+            return RandomAllocator(k=int(args[0])) if len(args) > 0 else RandomAllocator()
         else:
             warnings.warn('Invalid allocator type. Using topk;1 as default.')
             return TopKAllocator(k=1)
@@ -88,7 +91,7 @@ class DynaLoraConfig(DynaConfigMixin, LoraConfig):
     schedule_type: str = field(
         default='no_schedule',
         metadata={'help': ("The schedule type that will determine how often the adapters are updated. By default, only once in the beginning. Choices: ['no_schedule', 'once;<after_step>', 'periodic;<interval>', 'logarithmic;<scale>']")})
-    allocator_type: str = field(default='topk;1', metadata={'help': ("The allocator type that will determine how to select the active modules. Choices: ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>']")})
+    allocator_type: str = field(default='topk;1', metadata={'help': ("The allocator type that will determine how to select the active modules. Choices: ['topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>'], 'random[;<num_samples>]'")})
     aggregate_type: Literal['l2', 'l1'] = field(default='l2', 
                                                 metadata={'help': ("The type of aggregation to use for the cumulative activations. Choices: ['l2', 'l1']")})
 
@@ -101,7 +104,7 @@ class DynaVeraConfig(DynaConfigMixin, VeraConfig):
         - schedule_type (str): The schedule type that will determine how often the adapters are updated.
         By default, only once in the beginning. Possible choices are 'no_schedule', 'once;<after_step>', 'periodic;<interval>'.
         - allocator_type (str): The allocator type that will determine how to select the active modules.
-        Possible choices are 'topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>;<gamma>'.
+        Possible choices are 'topk;<k>', 'threshold;<T>', 'multinomial;<k>', 'scaled_multinomial;<k>;<gamma>', 'random[;<num_samples>]'.
         - aggregate_type (Literal['l2', 'l1']): The type of aggregation to use for the cumulative activations.
         Currently, only 'l2' and 'l1' are supported.
     """
