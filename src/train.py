@@ -32,6 +32,10 @@ from .utils.wrapper import PeftModelWrapper
 from transformers import HfArgumentParser
 from transformers import RobertaForSequenceClassification
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
+
 GLUE_TASKS = (
     "cola",
     "mnli",
@@ -267,6 +271,9 @@ def main():
         else "validation"
     )
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
     # build the optimizer and scheduler
     optimizer_arg = (None, None) # default to Trainer's constructors
     if args.use_layerwise_optim and hf_args.optim.lower() in SUPPORTED_OPTIMIZERS:
@@ -315,7 +322,7 @@ def main():
      ) as prof:
          trainer.add_callback(ProfCallback(prof=prof))
          trainer.train()
-    # trainer.train()
+#    trainer.train()
     print(f"Training took {time.time() - tick:.1f}s")
     trainer.save_model(os.path.join(hf_args.output_dir, 'final_model'))
     trainer.evaluate(encoded_dataset["test"])

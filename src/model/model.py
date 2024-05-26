@@ -42,6 +42,7 @@ class BaseMixin(AbstractMixin):
         self.allocator = self.peft_config.allocator
         # find adapter modules
         self.named_adapter_modules = self._find_adapter_modules()
+        print('adapter modules found:', self.named_adapter_modules.keys())
         # pass the list of modules to the allocator
         self.allocator.set_adapter_modules(self.named_adapter_modules)
         # do NOT initialize the modules here,

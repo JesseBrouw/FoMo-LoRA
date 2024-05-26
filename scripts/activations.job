@@ -3,15 +3,13 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 
-#SBATCH --job-name=LW_OPT_DYNA
+#SBATCH --job-name=ACTS
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=00:59:00
+#SBATCH --time=00:20:00
 #SBATCH --mem=60000M
-#SBATCH --array=1-24%8
-#SBATCH --output=/scratch-shared/fomo-lora/optim_%A_%a.out
-#SBATCH --error=/scratch-shared/fomo-lora/optim_%A_%a.err
-
+#SBATCH --output=/scratch-shared/fomo-lora/acts_%A_%a.out
+#SBATCH --error=/scratch-shared/fomo-lora/acts_%A_%a.err
 
 #SBATCH --ear=on
 #SBATCH --ear-policy=monitoring
@@ -20,14 +18,16 @@
 date
 
 export HF_DATASETS_CACHE=/scratch-local/mhamar/hf_cache_dir
-
+echo $HF_DATASETS_CACHE
 WORK_DIR=$HOME/FoMo-LoRA
 cd $WORK_DIR
 
+BASELINE_LORA=lora # or vera
+BASELINE_SET=cola # sst2, mrpc, rte, stsb, qnli
+
 # Good practice: define your directory where to save the models, and copy the job file to it
-JOB_FILE=$WORK_DIR/scripts/lw_optim_experiments.job
-ARRAY_FILE=$WORK_DIR/scripts/array_job_optim_experiments.txt
-#ARRAY_FILE=$WORK_DIR/scripts/array_job_optim_betas_experiments.txt
+JOB_FILE=$WORK_DIR/scripts/cola_experiments.job
+ARRAY_FILE=$WORK_DIR/scripts/baseline_arrays/array_job_${BASELINE_LORA}_${BASELINE_SET}_baselines_experiments.txt
 CHECKPOINTDIR=$WORK_DIR/logs/checkpoints/array_job_${SLURM_ARRAY_JOB_ID}
 EARLDIR=$WORK_DIR/logs/earl/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 
@@ -40,22 +40,11 @@ module load 2023
 module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
 source $WORK_DIR/.venv/bin/activate
 
-
-task=cola
-seed=42
-#batch_size=32
-#epochs=80
-#learning_rate=4e-04
-warmup_ratio=0.06
-
 export SLURM_EARL_VERBOSE_PATH=$EARLDIR
 
 # srun is necessary for earl logs: https://servicedesk.surf.nl/wiki/pages/viewpage.action?pageId=62226671
 srun env TOKENIZERS_PARALLELISM=false python -m src.train \
-                                    --task $task --warmup_ratio=$warmup_ratio\
-                                    --lora_alpha 8 --lora_r 8 --bf16 --seed $seed \
-                                    --lora dynalora \
+				    --seed 42 --check_activations --epochs 40 \
                                     --output_dir $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
                                     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)
 
-        

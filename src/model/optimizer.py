@@ -9,12 +9,12 @@ from transformers.optimization import (
 )
 from transformers import TrainingArguments
 import logging
-logger = logging.getLogger('layerwise_optimizer')
-logger.setLevel(logging.INFO)
+logger = logging.getLogger('lw-optim')
+logger.addHandler(logging.FileHandler('optim.log')
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
-    'adamw_torch': AdamW
+        'adamw_torch': AdamW
 }
 
 class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
@@ -31,6 +31,7 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
         self._make_optimizers()
 
     def optimizer_hook(self, param):
+        logger.info(f'optim for %s, has grad: %s', self.param_to_name[param], param.grad is not None)
         if param.grad is not None:
             self.optimizer_dict[param].step()
             self.optimizer_dict[param].zero_grad()
@@ -66,9 +67,10 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             self.optimizer_dict[param] = optimizer
             self.name_to_param[name] = param
             self.param_to_name[param] = name
-            logger.debug(f"Created optimizer for layer {name}")
+            logger.info(f"Created optimizer for layer {name}")
 
         for param in self.model.parameters():
+            logger.info('adding hook: %s %s', self.param_to_name.get(param, "unk"), param.requires_grad)
             if param.requires_grad:
                 param.register_post_accumulate_grad_hook(self.optimizer_hook)
 
