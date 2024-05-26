@@ -118,13 +118,13 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
                  config: TrainingArguments,
                  num_warmup_steps: int,
                  num_training_steps: int) -> None:
-        super().__init__()
         self.optimizer = optimizer
         self.config = config
         self.num_warmup_steps = num_warmup_steps
         self.num_training_steps = num_training_steps
         self.scheduler_dict = {}
         self._make_schedulers()
+        LayerWiseDummyScheduler.__init__(self)
 
     def step(self) -> None:
         for name, param in self.optimizer.model.named_parameters():
