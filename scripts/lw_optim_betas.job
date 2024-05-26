@@ -3,12 +3,12 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 
-#SBATCH --job-name=LW_OPT
+#SBATCH --job-name=LW_BETA
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:20:00
 #SBATCH --mem=60000M
-#SBATCH --array=1-10%8
+#SBATCH --array=1-9%8
 #SBATCH --output=/scratch-shared/fomo-lora/optim_%A_%a.out
 #SBATCH --error=/scratch-shared/fomo-lora/optim_%A_%a.err
 
@@ -26,7 +26,7 @@ cd $WORK_DIR
 
 # Good practice: define your directory where to save the models, and copy the job file to it
 JOB_FILE=$WORK_DIR/scripts/lw_optim_experiments.job
-ARRAY_FILE=$WORK_DIR/scripts/array_job_optim_experiments.txt
+ARRAY_FILE=$WORK_DIR/scripts/array_job_optim_betas_experiments.txt
 CHECKPOINTDIR=$WORK_DIR/logs/checkpoints/array_job_${SLURM_ARRAY_JOB_ID}
 EARLDIR=$WORK_DIR/logs/earl/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 

@@ -11,6 +11,7 @@ from transformers.optimization import (
 from transformers import TrainingArguments
 import logging
 logger = logging.getLogger('lw-optim')
+logger.setLevel(logging.INFO)
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
@@ -39,18 +40,17 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
     #     if param.grad is not None:
     #         self.optimizer_dict[param].step()
     #         self.optimizer_dict[param].zero_grad()
-
     def step(self, closure=None) -> float | None:
         # update params
         for name, param in self.model.named_parameters():
-            logger.info(f'optim for %s, has grad: %s', name, param.grad is not None)
+            logger.debug(f'optim for %s, has grad: %s', name, param.grad is not None)
             if not param.requires_grad:
                 continue
             if not param in self.optimizer_dict:
                 logger.error('param %s not in optimizer_dict', name)
                 continue
             self.optimizer_dict[param].step()
-            
+
     def zero_grad(self) -> None:
         # zero grads
         for name, param in self.model.named_parameters():
@@ -126,8 +126,14 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
         self.scheduler_dict = {}
         self._make_schedulers()
 
-    def scheduler_hook(self, param):
-        if param.grad is not None:
+    def step(self) -> None:
+        for name, param in self.optimizer.model.named_parameters():
+            logger.debug(f'scheduler for %s, has grad: %s', name, param.grad is not None)
+            if param.grad is None:
+                continue
+            if not param in self.scheduler_dict:
+                logger.error('param %s not in scheduler_dict', name)
+                continue
             self.scheduler_dict[param].step()
 
     def _make_schedulers(self):
@@ -152,10 +158,6 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
                 scheduler_specific_kwargs=self.config.lr_scheduler_kwargs
             )
             self.scheduler_dict[param] = scheduler
-
-        for _, param in self.optimizer.name_to_param.items():
-            if param.requires_grad:
-                param.register_post_accumulate_grad_hook(self.scheduler_hook)
 
     def load_state_dict(self, state_dict: Dict[str, Any]):
         param_to_name = self.optimizer.param_to_name
