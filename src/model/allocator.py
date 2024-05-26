@@ -45,7 +45,7 @@ class BaseAllocator(ABC):
         self._apply_mask(self.mask)
 
     def _apply_mask(self, mask: torch.Tensor) -> None:
-        logger.debug('Applying mask: %s', srt(mask))
+        logger.debug('Applying mask: %s', str(mask))
         for mod, msk in zip(self.named_adapter_modules.values(), mask):
             if msk:
                 mod.activate()
