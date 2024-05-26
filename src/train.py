@@ -283,8 +283,9 @@ def main():
             num_training_steps=len(encoded_dataset["train"]) * hf_args.num_train_epochs,
             num_warmup_steps=(hf_args.warmup_steps if hf_args.warmup_steps > 0 else \
                               hf_args.num_train_epochs * len(encoded_dataset["train"]) * hf_args.warmup_ratio),
+            logdir=hf_args.output_dir
         )
-        
+
     # initialize the modules
     getattr(model, "init_modules", lambda: None)()
 

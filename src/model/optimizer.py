@@ -1,4 +1,5 @@
 from typing import Dict, Any, Union
+import os
 import torch
 import logging
 from torch.optim import AdamW
@@ -10,7 +11,6 @@ from transformers.optimization import (
 from transformers import TrainingArguments
 import logging
 logger = logging.getLogger('lw-optim')
-logger.addHandler(logging.FileHandler('optim.log')
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
@@ -23,17 +23,42 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
     """
     def __init__(self,
                  model: torch.nn.Module,
-                 config: TrainingArguments) -> None:
+                 config: TrainingArguments,
+                 logdir: str = '.') -> None:
         super().__init__([])
+        # set up logger
+        logger.handlers.clear()
+        logger.addHandler(logging.FileHandler(os.path.join(logdir, 'optim.log')))
+
         self.model = model
         self.config = config
         self.optimizer_dict = {}
         self._make_optimizers()
 
-    def optimizer_hook(self, param):
-        logger.info(f'optim for %s, has grad: %s', self.param_to_name[param], param.grad is not None)
-        if param.grad is not None:
+    # def optimizer_hook(self, param):
+    #     if param.grad is not None:
+    #         self.optimizer_dict[param].step()
+    #         self.optimizer_dict[param].zero_grad()
+
+    def step(self, closure=None) -> float | None:
+        # update params
+        for name, param in self.model.named_parameters():
+            logger.info(f'optim for %s, has grad: %s', name, param.grad is not None)
+            if not param.requires_grad:
+                continue
+            if not param in self.optimizer_dict:
+                logger.error('param %s not in optimizer_dict', name)
+                continue
             self.optimizer_dict[param].step()
+            
+    def zero_grad(self) -> None:
+        # zero grads
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad:
+                continue
+            if not param in self.optimizer_dict:
+                logger.error('param %s not in optimizer_dict', name)
+                continue
             self.optimizer_dict[param].zero_grad()
 
     def _make_optimizers(self):
@@ -69,10 +94,10 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             self.param_to_name[param] = name
             logger.info(f"Created optimizer for layer {name}")
 
-        for param in self.model.parameters():
-            logger.info('adding hook: %s %s', self.param_to_name.get(param, "unk"), param.requires_grad)
-            if param.requires_grad:
-                param.register_post_accumulate_grad_hook(self.optimizer_hook)
+        # for param in self.model.parameters():
+        #     logger.info('adding hook: %s %s', self.param_to_name.get(param, "unk"), param.requires_grad)
+        #     if param.requires_grad:
+        #         param.register_post_accumulate_grad_hook(self.optimizer_hook)
 
     def load_state_dict(self, state_dict: Dict[str, Any]):
         for param, optimizer in self.optimizer_dict.items():
@@ -148,7 +173,8 @@ def create_layerwise_optimizer_and_scheduler(
     model: torch.nn.Module,
     config: TrainingArguments,
     num_warmup_steps: int,
-    num_training_steps: int
+    num_training_steps: int,
+    logdir: str = '.'
 ):
     """
         Create a layer-wise optimizer and scheduler based on the configuration.
@@ -156,6 +182,6 @@ def create_layerwise_optimizer_and_scheduler(
         For each **trainalbe** layer, we create an optimizer and a scheduler
         for each trainable layer.
     """
-    optimizer = LoadableLayerWiseDummyOptimizer(model, config)
+    optimizer = LoadableLayerWiseDummyOptimizer(model, config, logdir=logdir)
     scheduler = LoadableLayerWiseDummyScheduler(optimizer, config, num_warmup_steps, num_training_steps)
     return optimizer, scheduler
