@@ -79,12 +79,13 @@ class RandomAllocator(BaseAllocator):
         if not hasattr(self, "named_adapter_modules") or self.named_adapter_modules is None:
             raise ValueError("Adapter modules have not been set.")
         if self.k == 0:
-            mask = torch.rand(len(self.named_adapter_modules)) < 0.5 # will not ensure k elements
+            mask = torch.rand(len(self.named_adapter_modules), dtype=torch.float) < 0.5 # will not ensure k elements
         else:
-            values = torch.tensor([1.0 for _ in self.named_adapter_modules])
-            mask = torch.multinomial(values, self.k) # will ensure k elements
+            values = torch.tensor([1 for _ in self.named_adapter_modules], dtype=torch.float)
+            mask = torch.zeros_like(values)
+            mask[torch.multinomial(values, self.k)] = 1 # will ensure k elements
         # log
-        self._make_json_log(values, mask)
+        self._make_json_log(values.tolist(), mask.tolist())
         return mask
 
 class TopKAllocator(BaseAllocator):
