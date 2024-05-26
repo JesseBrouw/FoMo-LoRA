@@ -5,13 +5,13 @@ import logging
 from torch.optim import AdamW
 from transformers.optimization import (
     LayerWiseDummyOptimizer,
-    LayerWiseDummyScheduler,
     get_scheduler
 )
+from torch.optim.lr_scheduler import LRScheduler
 from transformers import TrainingArguments
 import logging
 logger = logging.getLogger('lw-optim')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
@@ -109,7 +109,8 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             for param, optimizer in self.optimizer_dict.items()
         }
 
-class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
+
+class LoadableLayerWiseDummyScheduler(LRScheduler):
     """
         Dummy scheduler that can load the state from a dict.
     """
@@ -124,7 +125,9 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
         self.num_training_steps = num_training_steps
         self.scheduler_dict = {}
         self._make_schedulers()
-        LayerWiseDummyScheduler.__init__(self)
+        last_epoch = -1
+        verbose = False
+        super().__init__(self.optimizer, last_epoch=last_epoch, verbose=verbose)
 
     def step(self) -> None:
         for name, param in self.optimizer.model.named_parameters():
