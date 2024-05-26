@@ -32,10 +32,6 @@ from .utils.wrapper import PeftModelWrapper
 from transformers import HfArgumentParser
 from transformers import RobertaForSequenceClassification
 
-import logging
-logging.basicConfig(level=logging.INFO)
-
-
 GLUE_TASKS = (
     "cola",
     "mnli",
@@ -262,7 +258,7 @@ def main():
         num_train_epochs=args.epochs,
         save_strategy="epoch",
     )
-
+    os.makedirs(hf_args.output_dir, exist_ok=True)
     validation_key = (
         "validation_mismatched"
         if task == "mnli-mm"
