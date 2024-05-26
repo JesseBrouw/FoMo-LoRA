@@ -68,6 +68,25 @@ class BaseAllocator(ABC):
         with open(self.output_path, "w") as f:
             json.dump(data, f)
 
+class RandomAllocator(BaseAllocator):
+    """
+        Allocator that selects the elements randomly.
+    """
+    def __init__(self, k: int = 0) -> None:
+        super().__init__(k)
+
+    def _compute_mask(self) -> torch.Tensor:
+        if not hasattr(self, "named_adapter_modules") or self.named_adapter_modules is None:
+            raise ValueError("Adapter modules have not been set.")
+        if self.k == 0:
+            mask = torch.rand(len(self.named_adapter_modules)) < 0.5 # will not ensure k elements
+        else:
+            values = torch.tensor([1 for _ in self.named_adapter_modules])
+            mask = torch.multinomial(values, self.k) # will ensure k elements
+        # log
+        self._make_json_log(values, mask)
+        return mask
+
 class TopKAllocator(BaseAllocator):
     """
         Allocator that selects the k largest elements.
