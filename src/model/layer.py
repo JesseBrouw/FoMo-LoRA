@@ -120,7 +120,7 @@ def dispatch_dynamic_dina(
             )
             kwargs["fan_in_fan_out"] = lora_config.fan_in_fan_out = False
         kwargs.update(lora_config.loftq_config)
-        new_module = DinaLinear(target, adapter_name, peft_config=lora_config, **kwargs)
+        new_module = DinaLoraLinear(target, adapter_name, peft_config=lora_config, **kwargs)
     # elif isinstance(target_base_layer, Conv1D):
     #     if not kwargs["fan_in_fan_out"]:
     #         warnings.warn(
