@@ -12,21 +12,6 @@ from peft.tuners.lora.layer import (LoraLayer,
 from peft.tuners.vera.layer import (VeraLayer,
                                     Linear as VeraLinear)
 
-class GradientHook:
-    def __init__(self, module):
-        self.grad_output = None
-        
-        # NOTE: This function is deprecated in favor of register_full_backward_hook
-        self.hook = module.register_hook(lambda tensor: self.backward_hook(tensor))
-
-    def backward_hook(self, grad_output):
-        """Should store the gradient output (no idea yet if it should be mean or sth else)."""
-        # NOTE: If you would rather reduce the memory requirements, you can store the mean of the gradient output (i.e. a scalar value) instead of the whole tensor.
-        self.grad_output = grad_output[0]  # Assuming single output
-
-    def remove(self):
-        self.hook.remove()
-
 class DinaLoraLayer(LoraLayer):
     """Dynamic LoRA layer that relies on gradient magnitude to reallocate adapters."""
     def __init__(self, *args, **kwargs):
@@ -40,6 +25,27 @@ class DinaLoraLayer(LoraLayer):
         self._is_active = True
         self.aggregator = peft_config.aggregator
         self.reset_cum_acts()
+        self._register_hooks()
+
+    def backward_hook(self, param: torch.nn.Parameter):
+        if param.grad is not None:
+            assert self._is_active, "The layer is not active, but a parameter is being updated."
+            assert param not in self.param_acts, "A parameter is being updated twice."
+            assert param in self.hooked_params, "A parameter is being updated, but it is not hooked."
+            self.param_acts[param] = self.aggregator(param.grad_output.detach())
+            self.hooked_params.remove(param)
+            if len(self.hooked_params) == 0:
+                self.cum_acts += sum([act for act in self.param_acts.values()])
+                self.hooked_params = set(self.param_acts.keys())
+                self.param_acts.clear()
+
+    def _register_hooks(self):
+        self.param_acts = {}
+        self.hooked_params = set()
+        for name, param in self.named_parameters():
+            if name.split('.')[0] in LoraLayer.adapter_layer_names:
+                param.register_post_accumulate_grad_hook(self.backward_hook)
+                self.hooked_params.add(param)
 
     def activate(self):
         """
@@ -49,7 +55,6 @@ class DinaLoraLayer(LoraLayer):
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = True
-                param.grad_hook = GradientHook(param)
 
     def deactivate(self):
         """
@@ -59,8 +64,6 @@ class DinaLoraLayer(LoraLayer):
         for name, param in self.named_parameters():
             if name.split('.')[0] in LoraLayer.adapter_layer_names:
                 param.requires_grad = False
-                if hasattr(param, "grad_hook"):
-                    param.grad_hook.remove()
 
     def reset_cum_acts(self):
         self._cum_acts = torch.tensor(1e-6, requires_grad=False)
@@ -85,55 +88,8 @@ class DinaLoraLinear(LoraLinear, DinaLoraLayer):
         LoraLinear.__init__(self, *args, **kwargs)
         DinaLoraLayer.__init__(self, *args, **kwargs)
 
-    def forward(self, x: torch.Tensor, *args: torch.Any, **kwargs: torch.Any) -> torch.Tensor:
-        # if self._is_active:
-        #     # increment the counter only if
-        #     # the layer is active
-        #     self._counter += 1
-        # copy-paste from LoraLinear
-        self._check_forward_args(x, *args, **kwargs)
-        adapter_names = kwargs.pop("adapter_names", None)
-
-        if self.disable_adapters:
-            if self.merged:
-                self.unmerge()
-            result = self.base_layer(x, *args, **kwargs)
-        elif adapter_names is not None:
-            result = self._mixed_batch_forward(
-                x, *args, adapter_names=adapter_names, **kwargs)
-        elif self.merged:
-            result = self.base_layer(x, *args, **kwargs)
-        else:
-            result = self.base_layer(x, *args, **kwargs)
-            torch_result_dtype = result.dtype
-            for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_A.keys():
-                    continue
-                lora_A = self.lora_A[active_adapter]
-                lora_B = self.lora_B[active_adapter]
-                dropout = self.lora_dropout[active_adapter]
-                scaling = self.scaling[active_adapter]
-                x = x.to(lora_A.weight.dtype)
-
-                if not self.use_dora[active_adapter]:
-                    # NOTE: this is the only place we do something different
-                    ab_path = lora_B(lora_A(dropout(x))) * scaling
-                    result = result + ab_path
-
-                    grad_hook = getattr(lora_A.weight, "grad_hook", None)
-                    if grad_hook is not None and grad_hook.grad_output is not None:
-                        self._cum_acts = self._cum_acts + self.aggregator(grad_hook.grad_output.detach())
-                        self._counter += self._is_active
-                else:
-                    x = dropout(x)
-                    result = result + \
-                        self._apply_dora(x, lora_A, lora_B,
-                                         scaling, active_adapter)
-
-            result = result.to(torch_result_dtype)
-
-        return result
-
+    # NOTE: we don't have to do anythin with the forward pass,
+    # the hooks are already registered, we just need to wait for the gradients to come in.
 
 def dispatch_dynamic_dina(
     target: torch.nn.Module,
