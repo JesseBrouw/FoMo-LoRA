@@ -12,14 +12,21 @@ from .config import DynaLoraConfig, DynaVeraConfig
 
 import os
 import json
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-# TODO: this should just be a mixin
+# RESOLVED: this should just be a mixin
 # Question: in which order does python look for method definitions?
 # Answer: it looks in the class itself first, then in the parent classes in the order they are defined.
 
 class AbstractMixin:
     dispatchers: Tuple[Callable]
     applicable_modules: Tuple[Any]
+    # tuple of tuples of strings, which are the names of the module parameters
+    # which belong to the same group
+    # e.g. we may want to activate/deactivate lora_A and lora_B together
+    module_param_groups: Tuple[Tuple[str]] = () # default to no groups
 
 class BaseMixin(AbstractMixin):
     """
@@ -41,7 +48,10 @@ class BaseMixin(AbstractMixin):
         self.schedule = self.peft_config.schedule
         self.allocator = self.peft_config.allocator
         # find adapter modules
-        self.named_adapter_modules = self._find_adapter_modules()
+        self.named_adapter_modules, self.grouped_adapter_modules \
+            = self._find_adapter_modules()
+        logger.info('adapter modules found: %s', (self.named_adapter_modules.keys(),))
+        logger.info('adapter groups found: %s', (self.grouped_adapter_modules.keys(),))
         # pass the list of modules to the allocator
         self.allocator.set_adapter_modules(self.named_adapter_modules)
         # do NOT initialize the modules here,
@@ -111,11 +121,35 @@ class BaseMixin(AbstractMixin):
         Find all adapter modules in the model
         """
         named_adapter_modules = {}
+        grouped_adapter_modules = {}
         for name, module in self.model.named_modules():
-            if isinstance(module, self.applicable_modules):
-                # this will be logged to json
+            is_applicable = list(map(lambda x: isinstance(module, x), self.applicable_modules))
+            # first come first served, we need the index
+            try:
+                idx = is_applicable.index(True)
                 named_adapter_modules[name] = module
-        return named_adapter_modules
+                # find the group name of the module
+                logger.debug("Found module %s", name)
+                if len(self.module_param_groups) < idx:
+                    continue
+
+                for param_name in self.module_param_groups[idx]:
+                    gr_name_index = name.find(param_name)
+                    if gr_name_index != -1:
+                        group_name = name[:gr_name_index]
+                        break
+                else:
+                    logger.error("Could not find group name for module %s", name)
+                    continue
+                if group_name not in grouped_adapter_modules:
+                    grouped_adapter_modules[group_name] = []
+                grouped_adapter_modules[group_name].append(module)
+                logger.debug("Added module %s to group %s", (name, group_name))
+            except ValueError:
+                # i.e. not applicable
+                continue
+        return named_adapter_modules, grouped_adapter_modules
+
 
 # DynaLoRA
 class DynaLoraMixin(BaseMixin):
@@ -126,7 +160,8 @@ class DynaLoraMixin(BaseMixin):
         it overrides the _create_new_module function of BasePeftModel
     """
     dispatchers = (dispatch_dynamic,)
-    applicable_modules = (DynaLayerMixin,)
+    applicable_modules = (DynaLoraLinear,)
+    module_param_groups = (('lora_A', 'lora_B'),)
 
 class DynaLoraModel(LoraModel, DynaLoraMixin):
     def __init__(self,

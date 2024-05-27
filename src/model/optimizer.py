@@ -142,6 +142,12 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
             for param, scheduler in self.scheduler_dict.items()
         }
 
+    def get_lr(self):
+        return [opt.param_groups[0]['lr'] for opt in self.optimizer.optimizer_dict.values()]
+
+    def _get_closed_form_lr(self):
+        return self.base_lrs
+
 def create_layerwise_optimizer_and_scheduler(
     model: torch.nn.Module,
     config: TrainingArguments,
@@ -157,3 +163,4 @@ def create_layerwise_optimizer_and_scheduler(
     optimizer = LoadableLayerWiseDummyOptimizer(model, config)
     scheduler = LoadableLayerWiseDummyScheduler(optimizer, config, num_warmup_steps, num_training_steps)
     return optimizer, scheduler
+
