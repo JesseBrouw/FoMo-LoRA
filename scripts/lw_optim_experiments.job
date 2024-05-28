@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:20:00
 #SBATCH --mem=60000M
-#SBATCH --array=1-10%8
+#SBATCH --array=1-1%8
 #SBATCH --output=/scratch-shared/fomo-lora/optim_%A_%a.out
 #SBATCH --error=/scratch-shared/fomo-lora/optim_%A_%a.err
 
