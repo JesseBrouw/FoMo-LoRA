@@ -258,7 +258,7 @@ def main():
         num_train_epochs=args.epochs,
         save_strategy="epoch",
     )
-
+    os.makedirs(hf_args.output_dir, exist_ok=True)
     validation_key = (
         "validation_mismatched"
         if task == "mnli-mm"
@@ -266,6 +266,9 @@ def main():
         if task == "mnli"
         else "validation"
     )
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     # build the optimizer and scheduler
     optimizer_arg = (None, None) # default to Trainer's constructors
@@ -276,8 +279,9 @@ def main():
             num_training_steps=len(encoded_dataset["train"]) * hf_args.num_train_epochs,
             num_warmup_steps=(hf_args.warmup_steps if hf_args.warmup_steps > 0 else \
                               hf_args.num_train_epochs * len(encoded_dataset["train"]) * hf_args.warmup_ratio),
+            logdir=hf_args.output_dir
         )
-        
+
     # initialize the modules
     getattr(model, "init_modules", lambda: None)()
 
@@ -315,7 +319,7 @@ def main():
      ) as prof:
          trainer.add_callback(ProfCallback(prof=prof))
          trainer.train()
-    # trainer.train()
+#    trainer.train()
     print(f"Training took {time.time() - tick:.1f}s")
     trainer.save_model(os.path.join(hf_args.output_dir, 'final_model'))
     trainer.evaluate(encoded_dataset["test"])

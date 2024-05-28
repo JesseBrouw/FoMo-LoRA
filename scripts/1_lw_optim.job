@@ -3,12 +3,12 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 
-#SBATCH --job-name=LW_OPT
+#SBATCH --job-name=LW_OPT_DYNA
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=00:20:00
+#SBATCH --time=00:10:00
 #SBATCH --mem=60000M
-#SBATCH --array=1-1%8
+#SBATCH --array=1-1%1
 #SBATCH --output=/scratch-shared/fomo-lora/optim_%A_%a.out
 #SBATCH --error=/scratch-shared/fomo-lora/optim_%A_%a.err
 
@@ -25,8 +25,8 @@ WORK_DIR=$HOME/FoMo-LoRA
 cd $WORK_DIR
 
 # Good practice: define your directory where to save the models, and copy the job file to it
-JOB_FILE=$WORK_DIR/scripts/lw_optim_experiments.job
-ARRAY_FILE=$WORK_DIR/scripts/array_job_optim_experiments.txt
+JOB_FILE=$WORK_DIR/scripts/1_lw_optim.job
+ARRAY_FILE=$WORK_DIR/scripts/array_1_optim_experiments.txt
 CHECKPOINTDIR=$WORK_DIR/logs/checkpoints/array_job_${SLURM_ARRAY_JOB_ID}
 EARLDIR=$WORK_DIR/logs/earl/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 
@@ -42,7 +42,7 @@ source $WORK_DIR/.venv/bin/activate
 
 task=cola
 seed=42
-#batch_size=32
+batch_size=32
 #epochs=80
 #learning_rate=4e-04
 warmup_ratio=0.06
@@ -51,8 +51,10 @@ export SLURM_EARL_VERBOSE_PATH=$EARLDIR
 
 # srun is necessary for earl logs: https://servicedesk.surf.nl/wiki/pages/viewpage.action?pageId=62226671
 srun env TOKENIZERS_PARALLELISM=false python -m src.train \
-                                    --task $task --warmup_ratio=$warmup_ratio\
+                                    --task $task --batch_size $batch_size --warmup_ratio=$warmup_ratio\
                                     --lora_alpha 8 --lora_r 8 --bf16 --seed $seed \
                                     --lora dynalora \
                                     --output_dir $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
                                     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)
+
+        

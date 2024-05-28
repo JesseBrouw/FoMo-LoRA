@@ -1,20 +1,21 @@
 from typing import Dict, Any, Union
+import os
 import torch
 import logging
 from torch.optim import AdamW
 from transformers.optimization import (
     LayerWiseDummyOptimizer,
-    LayerWiseDummyScheduler,
     get_scheduler
 )
+from torch.optim.lr_scheduler import LRScheduler
 from transformers import TrainingArguments
 import logging
-logger = logging.getLogger('layerwise_optimizer')
-logger.setLevel(logging.INFO)
+logger = logging.getLogger('lw-optim')
+logger.setLevel(logging.DEBUG)
 
 # supported optimizers
 SUPPORTED_OPTIMIZERS = {
-    'adamw_torch': AdamW
+        'adamw_torch': AdamW
 }
 
 class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
@@ -23,16 +24,41 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
     """
     def __init__(self,
                  model: torch.nn.Module,
-                 config: TrainingArguments) -> None:
+                 config: TrainingArguments,
+                 logdir: str = '.') -> None:
         super().__init__([])
+        # set up logger
+        logger.handlers.clear()
+        logger.addHandler(logging.FileHandler(os.path.join(logdir, 'optim.log')))
+
         self.model = model
         self.config = config
         self.optimizer_dict = {}
         self._make_optimizers()
 
-    def optimizer_hook(self, param):
-        if param.grad is not None:
+    # def optimizer_hook(self, param):
+    #     if param.grad is not None:
+    #         self.optimizer_dict[param].step()
+    #         self.optimizer_dict[param].zero_grad()
+    def step(self, closure=None) -> float | None:
+        # update params
+        for name, param in self.model.named_parameters():
+            logger.debug(f'optim for %s, has grad: %s', name, param.grad is not None)
+            if not param.requires_grad:
+                continue
+            if not param in self.optimizer_dict:
+                logger.error('param %s not in optimizer_dict', name)
+                continue
             self.optimizer_dict[param].step()
+
+    def zero_grad(self) -> None:
+        # zero grads
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad:
+                continue
+            if not param in self.optimizer_dict:
+                logger.error('param %s not in optimizer_dict', name)
+                continue
             self.optimizer_dict[param].zero_grad()
 
     def _make_optimizers(self):
@@ -66,11 +92,12 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             self.optimizer_dict[param] = optimizer
             self.name_to_param[name] = param
             self.param_to_name[param] = name
-            logger.debug(f"Created optimizer for layer {name}")
+            logger.info(f"Created optimizer for layer {name}")
 
-        for param in self.model.parameters():
-            if param.requires_grad:
-                param.register_post_accumulate_grad_hook(self.optimizer_hook)
+        # for param in self.model.parameters():
+        #     logger.info('adding hook: %s %s', self.param_to_name.get(param, "unk"), param.requires_grad)
+        #     if param.requires_grad:
+        #         param.register_post_accumulate_grad_hook(self.optimizer_hook)
 
     def load_state_dict(self, state_dict: Dict[str, Any]):
         for param, optimizer in self.optimizer_dict.items():
@@ -82,7 +109,8 @@ class LoadableLayerWiseDummyOptimizer(LayerWiseDummyOptimizer):
             for param, optimizer in self.optimizer_dict.items()
         }
 
-class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
+
+class LoadableLayerWiseDummyScheduler(LRScheduler):
     """
         Dummy scheduler that can load the state from a dict.
     """
@@ -91,16 +119,24 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
                  config: TrainingArguments,
                  num_warmup_steps: int,
                  num_training_steps: int) -> None:
-        super().__init__()
         self.optimizer = optimizer
         self.config = config
         self.num_warmup_steps = num_warmup_steps
         self.num_training_steps = num_training_steps
         self.scheduler_dict = {}
         self._make_schedulers()
+        last_epoch = -1
+        verbose = False
+        super().__init__(self.optimizer, last_epoch=last_epoch, verbose=verbose)
 
-    def scheduler_hook(self, param):
-        if param.grad is not None:
+    def step(self) -> None:
+        for name, param in self.optimizer.model.named_parameters():
+            logger.debug(f'scheduler for %s, has grad: %s', name, param.grad is not None)
+            if param.grad is None:
+                continue
+            if not param in self.scheduler_dict:
+                logger.error('param %s not in scheduler_dict', name)
+                continue
             self.scheduler_dict[param].step()
 
     def _make_schedulers(self):
@@ -126,10 +162,6 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
             )
             self.scheduler_dict[param] = scheduler
 
-        for _, param in self.optimizer.name_to_param.items():
-            if param.requires_grad:
-                param.register_post_accumulate_grad_hook(self.scheduler_hook)
-
     def load_state_dict(self, state_dict: Dict[str, Any]):
         param_to_name = self.optimizer.param_to_name
         for param, scheduler in self.scheduler_dict.items():
@@ -142,11 +174,18 @@ class LoadableLayerWiseDummyScheduler(LayerWiseDummyScheduler):
             for param, scheduler in self.scheduler_dict.items()
         }
 
+    def get_lr(self):
+        return [opt.param_groups[0]['lr'] for opt in self.optimizer.optimizer_dict.values()]
+
+    def _get_closed_form_lr(self):
+        return self.base_lrs
+
 def create_layerwise_optimizer_and_scheduler(
     model: torch.nn.Module,
     config: TrainingArguments,
     num_warmup_steps: int,
-    num_training_steps: int
+    num_training_steps: int,
+    logdir: str = '.'
 ):
     """
         Create a layer-wise optimizer and scheduler based on the configuration.
@@ -154,6 +193,6 @@ def create_layerwise_optimizer_and_scheduler(
         For each **trainalbe** layer, we create an optimizer and a scheduler
         for each trainable layer.
     """
-    optimizer = LoadableLayerWiseDummyOptimizer(model, config)
+    optimizer = LoadableLayerWiseDummyOptimizer(model, config, logdir=logdir)
     scheduler = LoadableLayerWiseDummyScheduler(optimizer, config, num_warmup_steps, num_training_steps)
     return optimizer, scheduler

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 import torch
 import json
 import logging
+logger = logging.getLogger('lw-optim')
+
 
 class BaseAllocator(ABC):
     """
@@ -28,7 +30,7 @@ class BaseAllocator(ABC):
     def set_adapter_modules(self, adapter_modules: Dict[str, Any]):
         self.named_adapter_modules = adapter_modules
         if len(adapter_modules) < self.k:
-            logging.warning(
+            logger.warning(
                 f"Number of adapter modules ({len(adapter_modules)}) is less than k ({self.k})."\
                     "Setting k to the number of modules.")
             self.k = len(adapter_modules)
@@ -43,6 +45,7 @@ class BaseAllocator(ABC):
         self._apply_mask(self.mask)
 
     def _apply_mask(self, mask: torch.Tensor) -> None:
+        logger.debug('Applying mask: %s', str(mask))
         for mod, msk in zip(self.named_adapter_modules.values(), mask):
             if msk:
                 mod.activate()

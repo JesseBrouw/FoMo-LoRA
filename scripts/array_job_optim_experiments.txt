@@ -1,6 +1,10 @@
---use_layerwise_optim --schedule_type periodic;100 --allocator_type scaled_multinomial;50 --learning_rate 5e-5 --lr_scheduler_type constant_with_warmup
---use_layerwise_optim --schedule_type periodic;100 --allocator_type scaled_multinomial;50 --learning_rate 1e-5 --lr_scheduler_type constant_with_warmup
---use_layerwise_optim --schedule_type periodic;100 --allocator_type scaled_multinomial;50 --learning_rate 1e-4 --lr_scheduler_type constant_with_warmup
---use_layerwise_optim --schedule_type periodic;100 --allocator_type scaled_multinomial;50 --learning_rate 1e-3 --lr_scheduler_type constant_with_warmup
---use_layerwise_optim --schedule_type periodic;100 --allocator_type scaled_multinomial;50 --learning_rate 1e-2 --lr_scheduler_type constant_with_warmup
---use_layerwise_optim --schedule_type periodic;100 --allocator_type scaled_multinomial;50 --learning_rate 1e-1 --lr_scheduler_type constant_with_warmup
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-3 --batch_size 32
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-4 --batch_size 32
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-5 --batch_size 32
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 5e-5 --batch_size 32
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-6 --batch_size 32
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-3 --batch_size 64
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-4 --batch_size 64
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-5 --batch_size 64
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 5e-5 --batch_size 64
+--epochs 10 --use_layerwise_optim --schedule_type periodic;10 --allocator_type scaled_multinomial;10 --learning_rate 1e-6 --batch_size 64
