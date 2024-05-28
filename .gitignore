@@ -166,3 +166,4 @@ checkpoint-*
 .vscode
 *.DS_Store
 output/
+logs/
