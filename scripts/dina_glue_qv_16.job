@@ -1,0 +1,55 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+
+#SBATCH --job-name=DINALORA
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=00:59:00
+#SBATCH --mem=60000M
+#SBATCH --array=1-6%6
+#SBATCH --output=../logs/out_err/dina_not_cola_qv_16_%A_%a.out
+#SBATCH --error=../logs/out_err/dina_not_cola_qv_16_%A_%a.err
+
+
+#SBATCH --ear=on
+#SBATCH --ear-policy=monitoring
+#SBATCH --ear-verbose=1
+
+date
+
+export HF_DATASETS_CACHE=/scratch-local/${whoami}/hf_cache_dir
+
+WORK_DIR=$HOME/FoMo-LoRA
+cd $WORK_DIR
+
+# Good practice: define your directory where to save the models, and copy the job file to it
+JOB_FILE=$WORK_DIR/scripts/dina_glue_qv_16.job
+HPARAMS_FILE=$WORK_DIR/scripts/dina_glue_qv_16.txt
+CHECKPOINTDIR=$WORK_DIR/logs/checkpoints/array_job_${SLURM_ARRAY_JOB_ID}
+EARLDIR=$WORK_DIR/logs/earl/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+
+mkdir -p $CHECKPOINTDIR
+mkdir -p $EARLDIR
+rsync $JOB_FILE $CHECKPOINTDIR/
+
+module load 2023
+module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
+source $WORK_DIR/.venv/bin/activate
+
+
+seed=42
+warmup_ratio=0.06
+#target_modules="query value" # default query value
+schedule_type="periodic;50"
+
+export SLURM_EARL_VERBOSE_PATH=$EARLDIR
+
+# srun is necessary for earl logs: https://servicedesk.surf.nl/wiki/pages/viewpage.action?pageId=62226671
+srun env TOKENIZERS_PARALLELISM=false python -m src.train \
+                                    --warmup_ratio=0.1\
+                                    --lora_alpha 8 --lora_r 8 --bf16 --seed 42 \
+                                    --lora dinalora --schedule_type once;1 --allocator_type "scaled_multinomial;16"\
+                                    --output_dir $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
+                                    $(awk NR==$SLURM_ARRAY_TASK_ID $HPARAMS_FILE)
