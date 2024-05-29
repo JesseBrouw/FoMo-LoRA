@@ -1,0 +1,170 @@
+job_id,experiment,aggregate_type,allocator_type,base_model,lora_alpha,peft_type,r,schedule_type,target_modules,learning_rate,metric_for_best_model,score,epoch
+6417363,3,l2,random;20,,8.0,LORA,8,once;3,"['query', 'key', 'value']",0.0004,accuracy,0.9165293794618341,14.0
+6417363,1,l2,random;20,,8.0,LORA,8,once;3,"['key', 'query', 'value']",0.0004,accuracy,0.9426605504587156,24.0
+6417393,6,l2,random;20,,,VERA,1024,once;3,"['key', 'query', 'value']",0.005,matthews_correlation,0.605723479357827,80.0
+6417393,3,l2,random;20,,,VERA,1024,once;3,"['key', 'query', 'value']",0.005,accuracy,0.914332784184514,17.0
+6417393,2,l2,random;20,,,VERA,1024,once;3,"['key', 'value', 'query']",0.005,accuracy,0.8676470588235294,30.0
+6376847,1,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;1,"['value', 'query']",0.0004,matthews_correlation,0.6084494723188812,18.0
+6381896,3,l2,scaled_multinomial;20,,8.0,LORA,8,periodic;50,"['key', 'query', 'value']",0.0004,accuracy,0.9229361156873512,14.0
+6377410,4,l2,scaled_multinomial;12,,8.0,LORA,8,periodic;30,"['value', 'query']",0.0004,matthews_correlation,0.6032121451400153,80.0
+6377410,2,l2,scaled_multinomial;12,,8.0,LORA,8,periodic;70,"['query', 'value']",0.0004,matthews_correlation,0.6006974680936171,80.0
+6308971,16,l2,scaled_multinomial;1,,8.0,LORA,8,periodic;100,"['query', 'key', 'value', 'attention.output.dense', 'output.dense', 'intermediate.dense']",0.0004,matthews_correlation,0.0,80.0
+6308971,9,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;100,"['intermediate.dense', 'attention.output.dense', 'query', 'output.dense', 'value', 'key']",0.0004,matthews_correlation,0.6529752188824345,80.0
+6308971,14,l2,multinomial;10,,8.0,LORA,8,periodic;100,"['value', 'attention.output.dense', 'output.dense', 'intermediate.dense', 'query', 'key']",0.0004,matthews_correlation,0.0,80.0
+6308971,5,l2,multinomial;10,,8.0,LORA,8,periodic;100,"['query', 'output.dense', 'key', 'attention.output.dense', 'value', 'intermediate.dense']",0.0004,matthews_correlation,0.5957317644481708,80.0
+6308971,17,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;100,"['key', 'value', 'intermediate.dense', 'attention.output.dense', 'query', 'output.dense']",0.0004,matthews_correlation,0.0,80.0
+6308971,10,l2,topk;1,,8.0,LORA,8,periodic;100,"['key', 'output.dense', 'attention.output.dense', 'query', 'value', 'intermediate.dense']",0.0004,matthews_correlation,0.0,80.0
+6308971,13,l2,multinomial;1,,8.0,LORA,8,periodic;100,"['value', 'attention.output.dense', 'intermediate.dense', 'output.dense', 'key', 'query']",0.0004,matthews_correlation,0.0,80.0
+6308971,11,l2,topk;10,,8.0,LORA,8,periodic;100,"['attention.output.dense', 'key', 'value', 'intermediate.dense', 'output.dense', 'query']",0.0004,matthews_correlation,0.0,80.0
+6308971,7,l2,scaled_multinomial;1,,8.0,LORA,8,periodic;100,"['attention.output.dense', 'key', 'output.dense', 'intermediate.dense', 'value', 'query']",0.0004,matthews_correlation,0.5626727648075698,80.0
+6308971,4,l2,multinomial;1,,8.0,LORA,8,periodic;100,"['intermediate.dense', 'query', 'value', 'attention.output.dense', 'key', 'output.dense']",0.0004,matthews_correlation,0.5653604748370356,80.0
+6308971,2,l2,topk;10,,8.0,LORA,8,periodic;100,"['key', 'query', 'output.dense', 'attention.output.dense', 'intermediate.dense', 'value']",0.0004,matthews_correlation,0.6131862438295606,80.0
+6308971,1,l2,topk;1,,8.0,LORA,8,periodic;100,"['key', 'query', 'value', 'attention.output.dense', 'intermediate.dense', 'output.dense']",0.0004,matthews_correlation,0.5102026507035501,80.0
+6308971,18,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;100,"['output.dense', 'key', 'attention.output.dense', 'intermediate.dense', 'query', 'value']",0.0004,matthews_correlation,-0.010433365633007041,80.0
+6388496,1,l2,scaled_multinomial\;10,,8.0,LORA,8,periodic\;10,"['value', 'query']",0.001,matthews_correlation,0.4446196636082168,5.0
+6388262,20,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,10.0
+6388262,6,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-05,matthews_correlation,0.0,10.0
+6388262,5,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-05,matthews_correlation,0.11749494392463006,10.0
+6388262,24,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,10.0
+6388262,22,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-05,matthews_correlation,0.0,10.0
+6388262,13,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-05,matthews_correlation,0.0,10.0
+6388262,15,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.00286100001416597,10.0
+6388262,2,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388316,20,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,10.0
+6388316,6,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.020702674026557004,10.0
+6388316,9,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-05,matthews_correlation,0.0,10.0
+6388316,17,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-05,matthews_correlation,0.0,10.0
+6388316,3,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388316,24,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,10.0
+6388316,13,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-05,matthews_correlation,0.0,10.0
+6388316,23,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-06,matthews_correlation,0.0,10.0
+6388316,8,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,10.0
+6388316,19,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388316,21,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-05,matthews_correlation,0.0,10.0
+6388316,15,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-06,matthews_correlation,-0.013798451289729747,10.0
+6388316,2,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-05,matthews_correlation,0.0,10.0
+6388316,18,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6391026,1,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",0.001,matthews_correlation,0.0,1.0
+6388962,6,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388962,9,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-05,matthews_correlation,0.0,10.0
+6388962,10,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-05,matthews_correlation,0.0,10.0
+6388962,24,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,10.0
+6388962,22,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388962,12,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,10.0
+6388962,13,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-05,matthews_correlation,0.0,10.0
+6388962,11,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-06,matthews_correlation,-0.031200057294041576,10.0
+6388962,7,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388962,23,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388962,8,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,10.0
+6388962,15,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-06,matthews_correlation,0.0,10.0
+6388962,2,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388962,1,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-05,matthews_correlation,0.0,10.0
+6367677,6,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['key', 'intermediate.dense', 'query', 'attention.output.dense', 'output.dense', 'value']",0.01,matthews_correlation,0.0,10.0
+6367677,9,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['value', 'output.dense', 'key', 'intermediate.dense', 'attention.output.dense', 'query']",0.01,matthews_correlation,0.020702674026557004,10.0
+6367677,8,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['output.dense', 'query', 'attention.output.dense', 'key', 'value', 'intermediate.dense']",0.001,matthews_correlation,0.0,10.0
+6367677,4,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['intermediate.dense', 'query', 'attention.output.dense', 'value', 'key', 'output.dense']",0.0001,matthews_correlation,0.0,10.0
+6367677,2,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['intermediate.dense', 'output.dense', 'attention.output.dense', 'key', 'value', 'query']",0.001,matthews_correlation,0.0,10.0
+6367677,1,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['output.dense', 'value', 'attention.output.dense', 'query', 'intermediate.dense', 'key']",0.0001,matthews_correlation,0.0,10.0
+6359024,6,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['attention.output.dense', 'key', 'query', 'output.dense', 'value', 'intermediate.dense']",1e-05,matthews_correlation,0.0,10.0
+6359024,9,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'intermediate.dense', 'key', 'output.dense', 'query', 'attention.output.dense']",0.01,matthews_correlation,0.0,10.0
+6359024,3,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value', 'intermediate.dense', 'attention.output.dense', 'key', 'output.dense']",0.001,matthews_correlation,0.0,10.0
+6359024,13,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['value', 'attention.output.dense', 'query', 'output.dense', 'key', 'intermediate.dense']",0.001,matthews_correlation,0.0,10.0
+6359024,7,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'output.dense', 'key', 'intermediate.dense', 'query', 'attention.output.dense']",0.0001,matthews_correlation,0.0,10.0
+6359024,8,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query', 'attention.output.dense', 'key', 'output.dense', 'intermediate.dense']",0.001,matthews_correlation,0.0,10.0
+6359024,4,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['key', 'output.dense', 'value', 'attention.output.dense', 'query', 'intermediate.dense']",0.01,matthews_correlation,0.0,10.0
+6359024,15,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['key', 'query', 'intermediate.dense', 'value', 'output.dense', 'attention.output.dense']",0.1,matthews_correlation,0.0,10.0
+6359024,2,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['intermediate.dense', 'key', 'attention.output.dense', 'output.dense', 'value', 'query']",0.0001,matthews_correlation,0.0,10.0
+6359024,1,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'intermediate.dense', 'output.dense', 'query', 'key', 'attention.output.dense']",1e-05,matthews_correlation,0.04013560634622473,10.0
+6358628,1,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['key', 'attention.output.dense', 'output.dense', 'intermediate.dense', 'query', 'value']",1e-05,matthews_correlation,0.0,10.0
+6388307,9,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388307,3,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388307,10,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,10.0
+6388307,12,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-05,matthews_correlation,0.0,5.0
+6388307,13,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388307,4,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388307,1,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",0.0001,matthews_correlation,0.0,10.0
+6346848,1,,,,0.5,LORA,8,,"['value', 'query']",5e-05,matthews_correlation,0.0,5.0
+6357398,2,,,,0.5,LORA,8,,"['query', 'value']",5e-05,matthews_correlation,0.0,5.0
+6357398,1,,,,0.5,LORA,8,,"['query', 'value']",5e-05,matthews_correlation,0.0,5.0
+6370161,16,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;100,"['query', 'value']",0.0001,matthews_correlation,0.023431827946222852,10.0
+6370161,26,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['query', 'value']",0.001,matthews_correlation,0.0,10.0
+6370161,5,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",0.001,matthews_correlation,0.0,10.0
+6370161,3,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",0.01,matthews_correlation,0.0,10.0
+6370161,28,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;100,"['query', 'value']",0.0001,matthews_correlation,0.0,10.0
+6370161,25,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['value', 'query']",0.0001,matthews_correlation,0.0,10.0
+6370161,13,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;100,"['query', 'value']",0.0001,matthews_correlation,0.0,10.0
+6370161,11,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;100,"['value', 'query']",0.001,matthews_correlation,0.0,10.0
+6370161,7,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['value', 'query']",0.0001,matthews_correlation,0.0,10.0
+6370161,32,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;100,"['query', 'value']",0.001,matthews_correlation,0.0,10.0
+6370161,23,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",0.001,matthews_correlation,0.0,10.0
+6370161,19,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['query', 'value']",0.0001,matthews_correlation,0.04365745810386553,10.0
+6370161,27,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['query', 'value']",0.01,matthews_correlation,0.08094943118147101,10.0
+6370161,21,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",0.01,matthews_correlation,0.0,10.0
+6370161,34,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;100,"['query', 'value']",0.0001,matthews_correlation,0.0,10.0
+6370161,2,l2,scaled_multinomial;50,,8.0,LORA,8,periodic;10,"['value', 'query']",0.001,matthews_correlation,0.07857725943647259,10.0
+6370161,18,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;100,"['value', 'query']",0.01,matthews_correlation,0.0,10.0
+6388274,16,l2,topk;1,,8.0,LORA,8,no_schedule,"['value', 'query']",5e-05,matthews_correlation,0.0,5.0
+6388274,6,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",0.0001,matthews_correlation,0.0,7.0
+6388274,9,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",1e-06,matthews_correlation,0.0,10.0
+6388274,14,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-06,matthews_correlation,0.0,10.0
+6388274,3,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388274,10,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,9.0
+6388274,13,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388274,11,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",0.0001,matthews_correlation,0.0,5.0
+6388274,15,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,7.0
+6388274,1,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",0.0001,matthews_correlation,-0.025062945427846983,10.0
+6358753,14,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['key', 'output.dense', 'intermediate.dense', 'attention.output.dense', 'value', 'query']",0.01,matthews_correlation,0.0,10.0
+6358753,13,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['key', 'output.dense', 'query', 'value', 'intermediate.dense', 'attention.output.dense']",0.001,matthews_correlation,0.0,10.0
+6358753,15,l2,scaled_multinomial;30,,8.0,LORA,8,periodic;10,"['attention.output.dense', 'intermediate.dense', 'key', 'query', 'value', 'output.dense']",0.1,matthews_correlation,0.0,10.0
+6357414,2,,,,0.5,LORA,8,,"['query', 'value']",5e-05,matthews_correlation,0.0,5.0
+6388963,9,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",1e-06,matthews_correlation,0.0,10.0
+6388963,5,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,10.0
+6388963,17,l2,topk;1,,8.0,LORA,8,no_schedule,"['value', 'query']",5e-05,matthews_correlation,0.0,5.0
+6388963,3,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388963,10,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['query', 'value']",5e-06,matthews_correlation,0.0,10.0
+6388963,24,l2,topk;1,,8.0,LORA,8,no_schedule,"['value', 'query']",5e-05,matthews_correlation,0.0,5.0
+6388963,22,l2,topk;1,,8.0,LORA,8,no_schedule,"['query', 'value']",5e-05,matthews_correlation,0.0,5.0
+6388963,8,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-05,matthews_correlation,0.0,10.0
+6388963,19,l2,topk;1,,8.0,LORA,8,no_schedule,"['value', 'query']",5e-05,matthews_correlation,0.0,5.0
+6388963,21,l2,topk;1,,8.0,LORA,8,no_schedule,"['query', 'value']",5e-05,matthews_correlation,0.0,5.0
+6388963,15,l2,scaled_multinomial;10,,8.0,LORA,8,periodic;10,"['value', 'query']",5e-06,matthews_correlation,0.0,10.0
+6388600,1,l2,scaled_multinomial\;10,,8.0,LORA,8,periodic\;10,"['query', 'value']",0.001,matthews_correlation,0.0,5.0
+6388567,1,l2,scaled_multinomial\;10,,8.0,LORA,8,periodic\;10,"['query', 'value']",0.001,matthews_correlation,0.0,5.0
+6382789,3,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;50,"['value', 'query']",0.0004,accuracy,0.9245835621453414,18.0
+6382789,4,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0005,accuracy,0.7436823104693141,80.0
+6382789,2,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0004,accuracy,0.8799019607843137,30.0
+6382789,1,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0005,accuracy,0.9357798165137615,14.0
+6381782,5,l2,scaled_multinomial;20,,8.0,LORA,8,periodic;1,"['value', 'query']",0.0004,matthews_correlation,0.6114254047721442,27.0
+6381786,4,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;100,"['query', 'value']",0.0004,matthews_correlation,0.5753011877541249,80.0
+6381786,1,l2,scaled_multinomial;4,,8.0,LORA,8,periodic;100,"['query', 'value']",0.0004,matthews_correlation,0.44691173398185324,80.0
+6344822,5,l2,scaled_multinomial;7,,8.0,LORA,8,periodic;100,"['attention.output.dense', 'output.dense', 'key', 'intermediate.dense', 'value', 'query']",0.0004,matthews_correlation,0.6031932328167873,80.0
+6344822,13,l2,scaled_multinomial;45,,8.0,LORA,8,periodic;100,"['query', 'intermediate.dense', 'output.dense', 'value', 'attention.output.dense', 'key']",0.0004,matthews_correlation,0.6089852308846828,80.0
+6344822,11,l2,scaled_multinomial;35,,8.0,LORA,8,periodic;100,"['key', 'query', 'intermediate.dense', 'attention.output.dense', 'value', 'output.dense']",0.0004,matthews_correlation,0.60819133045274,80.0
+6344822,7,l2,scaled_multinomial;15,,8.0,LORA,8,periodic;100,"['attention.output.dense', 'value', 'key', 'output.dense', 'query', 'intermediate.dense']",0.0004,matthews_correlation,0.6013991943475097,80.0
+6344822,15,l2,scaled_multinomial;55,,8.0,LORA,8,periodic;100,"['value', 'intermediate.dense', 'output.dense', 'query', 'attention.output.dense', 'key']",0.0004,matthews_correlation,0.6161067903576496,80.0
+6344822,2,l2,scaled_multinomial;2,,8.0,LORA,8,periodic;100,"['query', 'attention.output.dense', 'output.dense', 'intermediate.dense', 'value', 'key']",0.0004,matthews_correlation,0.5803487303998695,80.0
+6344822,1,l2,scaled_multinomial;1,,8.0,LORA,8,periodic;100,"['output.dense', 'key', 'attention.output.dense', 'intermediate.dense', 'value', 'query']",0.0004,matthews_correlation,0.5654865997646326,80.0
+6381785,4,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0004,matthews_correlation,0.613211494270806,80.0
+6381785,2,l2,scaled_multinomial;8,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0004,matthews_correlation,0.53388112595817,16.0
+6381783,5,l2,scaled_multinomial;20,,8.0,LORA,8,periodic;10,"['query', 'value']",0.0004,matthews_correlation,0.6081725386037139,80.0
+6381783,3,l2,scaled_multinomial;12,,8.0,LORA,8,periodic;10,"['value', 'query']",0.0004,matthews_correlation,0.547014428196921,29.0
+6381783,4,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;10,"['query', 'value']",0.0004,matthews_correlation,0.623213654281254,80.0
+6381783,2,l2,scaled_multinomial;8,,8.0,LORA,8,periodic;10,"['value', 'query']",0.0004,matthews_correlation,0.5938733582131833,80.0
+6384186,5,l2,scaled_multinomial;16,,,VERA,8,periodic;50,"['query', 'value']",0.0005,accuracy,0.7184115523465704,80.0
+6384186,3,l2,scaled_multinomial;16,,,VERA,8,periodic;50,"['query', 'value']",0.0004,matthews_correlation,0.5726807034874348,80.0
+6384777,6,l2,scaled_multinomial;16,,,VERA,1024,periodic;50,"['value', 'query']",0.005,pearson,0.9063407242521716,80.0
+6384777,4,l2,scaled_multinomial;16,,,VERA,1024,periodic;50,"['query', 'value']",0.005,accuracy,0.9240344133260113,22.0
+6384777,2,l2,scaled_multinomial;16,,,VERA,1024,periodic;50,"['value', 'query']",0.005,accuracy,0.8725490196078431,30.0
+6381796,3,l2,scaled_multinomial;12,,8.0,LORA,8,periodic;200,"['value', 'query']",0.0004,matthews_correlation,0.5805300925831498,76.0
+6381796,4,l2,scaled_multinomial;16,,8.0,LORA,8,periodic;200,"['value', 'query']",0.0004,matthews_correlation,0.6135933777663026,80.0
+6381796,2,l2,scaled_multinomial;8,,8.0,LORA,8,periodic;200,"['value', 'query']",0.0004,matthews_correlation,0.5806284057433418,80.0
+6389753,5,l2,random;16,,8.0,LORA,8,periodic;50,"['value', 'query']",0.0005,accuracy,0.7292418772563177,80.0
+6389753,4,l2,random;16,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0004,accuracy,0.9214717188358045,17.0
+6389753,2,l2,random;16,,8.0,LORA,8,periodic;50,"['query', 'value']",0.0004,accuracy,0.875,29.0
+6389753,1,l2,random;16,,8.0,LORA,8,periodic;50,"['value', 'query']",0.0005,accuracy,0.9311926605504587,15.0
+6384759,5,l2,scaled_multinomial;20,,,VERA,1024,periodic;50,"['query', 'key', 'value']",0.005,pearson,0.903294532696409,80.0
+6384759,3,l2,scaled_multinomial;20,,,VERA,1024,periodic;50,"['key', 'query', 'value']",0.005,accuracy,0.917993776313381,17.0
+6384759,4,l2,scaled_multinomial;20,,,VERA,1024,periodic;50,"['query', 'value', 'key']",0.005,accuracy,0.7545126353790613,160.0
+6384759,1,l2,scaled_multinomial;20,,,VERA,1024,periodic;50,"['value', 'query', 'key']",0.005,accuracy,0.9426605504587156,45.0
+6386842,5,l2,scaled_multinomial;20,,,VERA,1024,once;3,"['value', 'query', 'key']",0.005,pearson,0.9062964448204726,80.0
+6386842,4,l2,scaled_multinomial;20,,,VERA,1024,once;3,"['key', 'value', 'query']",0.005,accuracy,0.7364620938628159,160.0
