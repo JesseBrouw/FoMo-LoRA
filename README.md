@@ -1,6 +1,10 @@
 # FoMo-LoRA
 
-FoMo-LoRA is a project that...
+In this project we explored the training dynamics of Parameter-Efficient Fine-Tuning (PEFT) methods, with an emphasis on Low-Rank Adaptation (LoRA). Mainly, we wanted to evaluate, whether it is possible to further reduce memory overhead of fine-tuning by selectively deactivating gradient updates for certain modules during training. In our method, we measured either activation magnitude of the adapted layers in the forward pass, or the gradient magnitude of the same vector in the backward pass. After aggregating these measurements using the L2 norm, we regarded them as *importance* measures and used them to dynamically select modules to update during training.
+
+Our results show, that we can effectively reduce the number of updated parameters during training by $~50\%$ without sacrificing performance. We also found that the choice of importance measure has little impact on the performance. In fact, we showed that even with uniform random resouce allocation, we can achieve similar performance as baseline LoRA.
+
+![Comparison to Random](notebooks/figures/random_cola.png)
 
 ## Installation
 
@@ -19,18 +23,6 @@ To use FoMo-LoRA, inspect the help message of the `train` module as well as the 
 ```bash
 python -m src.train --help
 ```
-
-## Contributing
-
-If you want to contribute to FoMo-LoRA, follow these steps:
-
-1. Fork the repository.
-2. Create a new branch: `git checkout -b 'new-feature'`.
-3. Make your changes and commit them: `git commit -m 'Add some feature'`.
-4. Push to the original branch: `git push origin 'new-feature'`.
-5. Create the pull request.
-
-Alternatively, see the GitHub documentation on [creating a pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request).
 
 ## License
 
