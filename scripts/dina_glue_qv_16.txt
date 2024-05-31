@@ -1,0 +1,6 @@
+--task sst2 --batch_size 16 --epochs 60 --learning_rate 5e-04
+--task mrpc --batch_size 16 --epochs 30 --learning_rate 4e-04 
+--task cola --batch_size 64 --epochs 80 --learning_rate 5e-03 
+--task qnli --batch_size 32 --epochs 25 --learning_rate 4e-04 
+--task rte --batch_size 32 --epochs 80 --learning_rate 5e-04 
+--task stsb --batch_size 16 --epochs 60 --learning_rate 5e-04
