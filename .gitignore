@@ -167,3 +167,4 @@ checkpoint-*
 *.DS_Store
 output/
 results*
+logs/*
